@@ -121,7 +121,7 @@ if args.data == 'ALL3' and args.model == 'itransformerUniOcean5':
     print('[ALL3] Switching model to itransformerUniOcean (3 factors: sal, ssh, sst).')
     args.model = 'itransformerUniOcean'
 
-if args.data == 'ALL4' and args.model != 'itransformerUniOcean4':
+if args.data == 'ALL4' and args.model not in ['itransformerUniOcean4', 'itransformerUniAbl']:
     print('[ALL4] Forcing model to itransformerUniOcean4 (4 factors: sal, ssh, uo, vo).')
     args.model = 'itransformerUniOcean4'
 

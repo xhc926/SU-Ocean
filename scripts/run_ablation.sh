@@ -1,17 +1,12 @@
 #!/bin/bash
-# Multiscale: ALL4 四要素（sal / ssh / uo / vo）+ iTransformerUniOcean4。
-# 数据目录：/root/autodl-tmp/ms/results/area3（非 short），需含 sal.pkl ssh.pkl uo.pkl vo.pkl。
-# 对 seq_len ∈ {16,24,32,48} 循环，label_len = pred_len = seq_len/2。
-# SCALE_SETS: 每组为传给 run.py --scales 的若干整数（空格分隔）。
+# Cross-factor 融合消融：保留 3 要素输入，禁用 cross-factor 融合（itransformerUniAbl）。
+# 与 run_multiscale.sh 同风格：固定 ALL4（area3）、多尺度、同一组超参。
 #
-# 用法:
-#   bash scripts/run_multiscale.sh
 
 DATA=ALL4
-SEQ_LENS=(16)
+SEQ_LENS=(16 24 32 48)
 SCALE_SETS=("2 1")
-
-MODEL=itransformerUniOcean4
+MODEL=itransformerUniAbl
 
 for SEQ_LEN in "${SEQ_LENS[@]}"; do
   HALF=$((SEQ_LEN / 2))
@@ -34,7 +29,7 @@ for SEQ_LEN in "${SEQ_LENS[@]}"; do
       --seq_len $SEQ_LEN \
       --label_len $LABEL_LEN \
       --pred_len $PRED_LEN \
-      --d_model 128 \
+      --d_model 64 \
       --n_heads 4 \
       --e_layers 2 \
       --d_layers 1 \
@@ -52,4 +47,4 @@ for SEQ_LEN in "${SEQ_LENS[@]}"; do
   done
 done
 
-echo ">>> All multiscale runs completed."
+echo ">>> All cross-factor ablation runs completed."

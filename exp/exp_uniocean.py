@@ -4,7 +4,8 @@ from models.model_Informer import InformerUni, Informer,  Informer_two
 from models.model_Autoformer import AutoformerUni,Autoformer
 from models.model_FEDformer import FEDformerUni,FEDformer
 from models.model_base import ConvLSTM,GRU
-from models.model_iTransformer import iTransformer, iTransformerUni, iTransformerUni4, iTransformerUni5
+from models.model_iTransformer import iTransformer, iTransformerUni, iTransformerUni4
+from models.model_iTransformer_ablation import iTransformerUniAbl
 
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
@@ -47,7 +48,7 @@ class Exp_UniOcean(Exp_Basic):
             'itransformer':iTransformer,
             'itransformerUniOcean':iTransformerUni,
             'itransformerUniOcean4':iTransformerUni4,
-            'itransformerUniOcean5':iTransformerUni5,
+            'itransformerUniAbl':iTransformerUniAbl,
         }
         if self.args.model =='convlstm':
             e_layers = self.args.e_layers
@@ -61,13 +62,18 @@ class Exp_UniOcean(Exp_Basic):
              model = model_dict[self.args.model](
                  self.args.enc_in, self.args.d_model, self.args.num_layers,
              )
-        if self.args.model in ['informer','informerUniOcean','informer_two','autoformerUniOcean','fedformerUniOcean','autoformer','fedformer','itransformer','itransformerUniOcean','itransformerUniOcean4','itransformerUniOcean5']:
+        if self.args.model in ['informer','informerUniOcean','informer_two','autoformerUniOcean','fedformerUniOcean','autoformer','fedformer','itransformer','itransformerUniOcean','itransformerUniAbl','itransformerUniOcean4','itransformerUniOcean5']:
             e_layers = self.args.e_layers
-            def _land_mask_kwargs(model_cls):
+
+            def _model_extra_init_kwargs(model_cls):
                 sig = inspect.signature(model_cls.__init__)
+                kw = {}
                 if 'land_mask_path' in sig.parameters:
-                    return {'land_mask_path': self.args.land_mask_path}
-                return {}
+                    kw['land_mask_path'] = getattr(self.args, 'land_mask_path', '')
+                if 'scale_mask_mode' in sig.parameters:
+                    kw['scale_mask_mode'] = getattr(self.args, 'scale_mask_mode', 'soft')
+                return kw
+
             model = model_dict[self.args.model](
                 self.args.enc_in, self.args.dec_in, self.args.c_out, 
                 self.args.seq_len, self.args.label_len, self.args.pred_len, 
@@ -81,7 +87,7 @@ class Exp_UniOcean(Exp_Basic):
                 self.args.version, self.args.mode_select, self.args.modes,
                 self.args.L, self.args.base, self.args.cross_activation,
                 self.args.conv_dff, self.device,
-                **_land_mask_kwargs(model_dict[self.args.model])
+                **_model_extra_init_kwargs(model_dict[self.args.model])
             ).float()
 
         if self.args.use_multi_gpu and self.args.use_gpu:
@@ -485,3 +491,4 @@ class Exp_UniOcean(Exp_Basic):
             batch_y = batch_y[:,-self.args.pred_len:,f_dim:].to(self.device)
 
         return outputs, batch_y
+    
