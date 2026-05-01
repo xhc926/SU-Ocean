@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from einops import rearrange
 
 def adjust_learning_rate(optimizer, epoch, args):
     if args.lradj=='type1':
@@ -83,3 +84,37 @@ class StandardScaler():
             mean = mean[-1:]
             std = std[-1:]
         return (data * std) + mean
+
+def hier_half_token_weight(token_weight, ratio=2):
+    if token_weight is None:
+        return None
+    # temp_token_weight_time: [b, token_num]
+    B, N = token_weight.shape
+    if N % ratio != 0:
+        tmp = ratio - N % ratio
+        token_weight = torch.cat([token_weight, token_weight[:, -tmp:]], dim=-1)
+    token_weight = token_weight.reshape(B, -1, ratio).sum(dim=-1)
+    return token_weight
+
+
+def moore_penrose_iter_pinv(x, iters=6):
+    device = x.device
+
+    abs_x = torch.abs(x)
+    col = abs_x.sum(dim=-1)
+    row = abs_x.sum(dim=-2)
+    z = rearrange(x, '... i j -> ... j i') / (torch.max(col) * torch.max(row))
+
+    I = torch.eye(x.shape[-1], device=device)
+    I = rearrange(I, 'i j -> () i j')
+
+    for _ in range(iters):
+        xz = x @ z
+        z = 0.25 * z @ (13 * I - (xz @ (15 * I - (xz @ (7 * I - xz)))))
+
+    return z
+
+
+def plot_mat(*_args, **_kwargs):
+    """Optional attention visualization (unused in training)."""
+    pass

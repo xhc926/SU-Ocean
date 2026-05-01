@@ -62,6 +62,9 @@ class Exp_UniOcean(Exp_Basic):
              model = model_dict[self.args.model](
                  self.args.enc_in, self.args.d_model, self.args.num_layers,
              )
+        if self.args.model == 'OLinear':
+            from models.model_OLinear import Model as OLinearModel
+            model = OLinearModel(self.args).float()
         if self.args.model in ['informer','informerUniOcean','informer_two','autoformerUniOcean','fedformerUniOcean','autoformer','fedformer','itransformer','itransformerUniOcean','itransformerUniAbl','itransformerUniOcean4','itransformerUniOcean5']:
             e_layers = self.args.e_layers
 
@@ -97,6 +100,11 @@ class Exp_UniOcean(Exp_Basic):
             print('total param:' ,total)
 
         return model
+
+    def _unwrap_forecast_out(self, raw):
+        if isinstance(raw, tuple):
+            return raw[0]
+        return raw
 
     def _is_all_mode(self):
         return self.args.root_path in ['./data/ALL/', '/root/autodl-tmp/ALL/', '/root/autodl-tmp/data/upsampled/1-4/area1',
@@ -472,15 +480,11 @@ class Exp_UniOcean(Exp_Basic):
             else:
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs,_ = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                        else:
-                            outputs,_ = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                        outputs = self._unwrap_forecast_out(
+                            self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark))
                 else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                    else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                    outputs = self._unwrap_forecast_out(
+                        self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark))
                 if self.args.inverse:
                     outputs = dataset_object.inverse_transform(outputs)
                 if self.args.get_prediction:
