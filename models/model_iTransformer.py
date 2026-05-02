@@ -151,7 +151,9 @@ class iTransformerUni(nn.Module):
                 conv_dff=32,
                 device=torch.device('cuda:0'),
                 land_mask_path='',
-                scale_mask_mode='soft'):
+                scale_mask_mode='soft',
+                single_factor_ablation=False,
+                ablation_factor_idx=0):
         super(iTransformerUni, self).__init__()
         self.pred_len = out_len
         self.attn = attn
@@ -162,6 +164,12 @@ class iTransformerUni(nn.Module):
         self.dropout = dropout
         self.use_multi_scale = use_multi_scale
         self.scales = scales
+        self.d_model = d_model
+        self.factor_num = 3
+        self.single_factor_ablation = bool(single_factor_ablation)
+        self.ablation_factor_idx = int(ablation_factor_idx)
+        if self.ablation_factor_idx < 0 or self.ablation_factor_idx >= self.factor_num:
+            raise ValueError("ablation_factor_idx must be in [0, {}], got {}".format(self.factor_num - 1, self.ablation_factor_idx))
         self.land_mask_flat = None
         self.scale_mask_mode = str(scale_mask_mode).lower()
         if self.scale_mask_mode not in ['soft', 'hard', 'off']:
@@ -174,6 +182,8 @@ class iTransformerUni(nn.Module):
             self.spatial_shape = (25, 43)
         elif enc_in == 17 * 9:
             self.spatial_shape = (17, 9)
+        elif enc_in == 49 * 13:
+            self.spatial_shape = (49, 13)
         else:
             self.spatial_shape = None
         self.spatial_mv = moving_avg_spatial(self.spatial_shape) if self.spatial_shape is not None else None
@@ -267,6 +277,7 @@ class iTransformerUni(nn.Module):
             self.space_embedding(x_enc[:,:,:,1]),
             self.space_embedding(x_enc[:,:,:,2]),
         ]
+        active_ids = [self.ablation_factor_idx] if self.single_factor_ablation else [0, 1, 2]
 
         fusions = [self.scale_fusions_one, self.scale_fusions_two, self.scale_fusions_three]
         embeddings = [self.enc_embedding_one, self.enc_embedding_two, self.enc_embedding_three]
@@ -284,7 +295,7 @@ class iTransformerUni(nn.Module):
         for scale in self.spatial_scales:
             key = str(scale)
             
-            for i in range(3):
+            for i in active_ids:
                 x_scale_enc = self._spatial_downsample(x_factor[i], scale)
                 n_spatial_tokens = x_scale_enc.shape[-1]
                 
@@ -332,12 +343,25 @@ class iTransformerUni(nn.Module):
                     fused_input = F.dropout(fused_input, p=self.dropout * 0.3, inplace=False)
                 
                 out_hidden, attns_tmp = encoders[i](fused_input, attn_mask=None)
-                if i == 0 and scale == self.spatial_scales[-1]:
+                if i == active_ids[0] and scale == self.spatial_scales[-1]:
                     attns_one = attns_tmp
                 
                 hidden_prev[i] = out_hidden[:, :n_spatial_tokens, :]
                 
             prev_scale = scale
+
+        if self.single_factor_ablation:
+            i = self.ablation_factor_idx
+            dec_out_scale = projectors[i](hidden_prev[i]).permute(0, 2, 1)
+            if self.training:
+                dec_out_scale = F.dropout(dec_out_scale, p=self.dropout, inplace=False)
+            if self.use_norm:
+                dec_out_scale = dec_out_scale * final_stdevs[i][:, :1, :].repeat(1, self.pred_len, 1)
+                dec_out_scale = dec_out_scale + final_means[i][:, :1, :].repeat(1, self.pred_len, 1)
+            dec_out = dec_out_scale.unsqueeze(3)
+            if self.output_attention:
+                return dec_out[:, -self.pred_len:, :, :], attns_one
+            return dec_out[:, -self.pred_len:, :, :]
 
         all_factors = torch.cat(hidden_prev, dim=2)  # [B, D, 3 * d_model]
         fused_list = [mlps[i](all_factors) for i in range(3)]

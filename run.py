@@ -100,7 +100,32 @@ parser.add_argument('--batch_first', type=bool, default=True)
 parser.add_argument('--bias', type=bool, default=True)
 parser.add_argument('--return_all_layers', type=bool, default=False)
 parser.add_argument('--seed', type=int, default=-1, help='-1 means auto-generate a random base seed')
+
+# OLinear single-factor baseline (models/model_OLinear.py); Q matrices default under root_path/olinear_q/
+parser.add_argument('--Q_chan_indep', action='store_true', help='OLinear: per-channel Q (N×T×T), heavy')
+parser.add_argument('--q_mat_file', type=str, default='', help='OLinear: shared Q_in .npy path (T×T)')
+parser.add_argument('--q_out_mat_file', type=str, default='', help='OLinear: shared Q_out .npy path (P×P)')
+parser.add_argument('--Q_MAT_file', type=str, default='', help='OLinear: channel-wise Q_in .npy (N×T×T)')
+parser.add_argument('--Q_OUT_MAT_file', type=str, default='', help='OLinear: channel-wise Q_out .npy (N×P×P)')
+parser.add_argument('--temp_patch_len', type=int, default=1)
+parser.add_argument('--temp_stride', type=int, default=1)
+parser.add_argument('--embed_size', type=int, default=1)
+parser.add_argument('--CKA_flag', action='store_true', help='OLinear: optional CKA logging in encoder')
+
+# SimpleTM baseline args
+parser.add_argument('--geomattn_dropout', type=float, default=0.5)
+parser.add_argument('--requires_grad', type=int, default=1, help='SimpleTM learnable wavelets (1/0)')
+parser.add_argument('--wv', type=str, default='db1')
+parser.add_argument('--m', type=int, default=3)
+parser.add_argument('--simpletm_kernel_size', type=int, default=0, help='SimpleTM random wavelet kernel size; 0 means use wavelet default')
+parser.add_argument('--alpha', type=float, default=1.0)
+parser.add_argument('--simpletm_use_norm', type=int, default=1, help='SimpleTM use norm/denorm (1/0)')
+
 args = parser.parse_args()
+if args.simpletm_kernel_size <= 0:
+    args.simpletm_kernel_size = None
+args.requires_grad = bool(args.requires_grad)
+args.simpletm_use_norm = bool(args.simpletm_use_norm)
 
 log_dir = args.log_dir
 os.makedirs(log_dir, exist_ok=True)

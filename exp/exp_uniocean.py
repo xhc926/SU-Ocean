@@ -5,6 +5,8 @@ from models.model_Autoformer import AutoformerUni,Autoformer
 from models.model_FEDformer import FEDformerUni,FEDformer
 from models.model_base import ConvLSTM,GRU
 from models.model_iTransformer import iTransformer, iTransformerUni
+from models.model_iTransformer_ablation import iTransformerUniAbl
+from models.model_SimpleTM import Model as SimpleTM
 
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
@@ -46,6 +48,8 @@ class Exp_UniOcean(Exp_Basic):
             'gru':GRU,
             'itransformer':iTransformer,
             'itransformerUniOcean':iTransformerUni,
+            'itransformerUniAbl':iTransformerUniAbl,
+            'SimpleTM':SimpleTM,
         }
         if self.args.model =='convlstm':
             e_layers = self.args.e_layers
@@ -59,16 +63,23 @@ class Exp_UniOcean(Exp_Basic):
              model = model_dict[self.args.model](
                  self.args.enc_in, self.args.d_model, self.args.num_layers,
              )
-        if self.args.model in ['informer','informerUniOcean','informer_two','autoformerUniOcean','fedformerUniOcean','autoformer','fedformer','itransformer','itransformerUniOcean']:
+        if self.args.model == 'OLinear':
+            from models.model_OLinear import Model as OLinearModel
+            model = OLinearModel(self.args).float()
+        if self.args.model == 'SimpleTM':
+            model = model_dict[self.args.model](self.args).float()
+        if self.args.model in ['informer','informerUniOcean','informer_two','autoformerUniOcean','fedformerUniOcean','autoformer','fedformer','itransformer','itransformerUniOcean','itransformerUniAbl','itransformerUniOcean4','itransformerUniOcean5']:
             e_layers = self.args.e_layers
-            def _optional_model_kwargs(model_cls):
+
+            def _model_extra_init_kwargs(model_cls):
                 sig = inspect.signature(model_cls.__init__)
-                kwargs = {}
+                kw = {}
                 if 'land_mask_path' in sig.parameters:
-                    kwargs['land_mask_path'] = self.args.land_mask_path
+                    kw['land_mask_path'] = getattr(self.args, 'land_mask_path', '')
                 if 'scale_mask_mode' in sig.parameters:
-                    kwargs['scale_mask_mode'] = self.args.scale_mask_mode
-                return kwargs
+                    kw['scale_mask_mode'] = getattr(self.args, 'scale_mask_mode', 'soft')
+                return kw
+
             model = model_dict[self.args.model](
                 self.args.enc_in, self.args.dec_in, self.args.c_out, 
                 self.args.seq_len, self.args.label_len, self.args.pred_len, 
@@ -82,7 +93,7 @@ class Exp_UniOcean(Exp_Basic):
                 self.args.version, self.args.mode_select, self.args.modes,
                 self.args.L, self.args.base, self.args.cross_activation,
                 self.args.conv_dff, self.device,
-                **_optional_model_kwargs(model_dict[self.args.model])
+                **_model_extra_init_kwargs(model_dict[self.args.model])
             ).float()
 
         if self.args.use_multi_gpu and self.args.use_gpu:
@@ -93,11 +104,17 @@ class Exp_UniOcean(Exp_Basic):
 
         return model
 
+    def _unwrap_forecast_out(self, raw):
+        if isinstance(raw, tuple):
+            return raw[0]
+        return raw
+
     def _is_all_mode(self):
-        return self.args.root_path in ['./data/ALL/', '/root/autodl-tmp/ALL/', '/root/autodl-tmp/upsampled', '/root/autodl-tmp/',
-                                       '/root/autodl-tmp/data/upsampled/1-4',
-                                       '/root/autodl-tmp/data/upsampled/1-4/area1',
-                                       '/root/autodl-tmp/data/upsampled/1-4/area2'] and \
+        return self.args.root_path in ['./data/ALL/', '/root/autodl-tmp/ALL/', '/root/autodl-tmp/data/upsampled/1-4/area1',
+                                                 '/root/autodl-tmp/data/upsampled/1-4/area2',
+                                                 '/root/autodl-tmp/data/upsampled/1-12/area3',
+                                                 '/root/autodl-tmp/data/upsampled/1-12/area3/short',
+                                                 '/root/autodl-tmp/ms/results/area3'] and \
             self.args.data in ['ALL1', 'ALL2', 'ALL3', 'ALL4', 'ALL5', 'ALL6']
 
     def _mask_like(self, ref_tensor):
@@ -119,25 +136,6 @@ class Exp_UniOcean(Exp_Basic):
                 return (sq * mask).sum() / (mask.sum() + 1e-8)
         return sq.mean()
 
-    def _masked_or_raw_metrics_np(self, pred_np, true_np):
-        """
-        Return (mae, mse, rmse), applying land mask when available and shape-matched.
-        pred_np/true_np expected shape: [N, T, D]
-        """
-        if self.land_mask is not None:
-            mask_np = self.land_mask.numpy()
-            if mask_np.ndim > 1:
-                mask_np = mask_np.reshape(-1)
-            if pred_np.shape[-1] == mask_np.shape[0]:
-                mask_bc = np.broadcast_to(mask_np.reshape(1, 1, -1), pred_np.shape)
-                diff = pred_np - true_np
-                mse = np.sum((diff ** 2) * mask_bc) / (np.sum(mask_bc) + 1e-8)
-                rmse = np.sqrt(mse)
-                mae = np.sum(np.abs(diff) * mask_bc) / (np.sum(mask_bc) + 1e-8)
-                return mae, mse, rmse
-        mae, mse, rmse, _, _ = metric(pred_np, true_np)
-        return mae, mse, rmse
-
     def _get_data(self, flag):
         args = self.args
         data_dict = {
@@ -148,13 +146,13 @@ class Exp_UniOcean(Exp_Basic):
             'ICEC1': Dataset_Custom, 'OC1': Dataset_Custom,
             'OISSS1': Dataset_Custom, 'OISSS3': Dataset_Custom,
             'OISST1': Dataset_Custom, 'OISST2': Dataset_Custom, 'OISST3': Dataset_Custom, 'OISST4': Dataset_Custom, 'OISST5': Dataset_Custom,
-            'ALL1': Dataset_Custom, 'ALL2': Dataset_Custom, 'ALL3': Dataset_Custom, 'ALL4': Dataset_Custom, 'ALL5': Dataset_Custom, 'ALL6': Dataset_Custom,
-            'sst_1_12': Dataset_Custom, 'swh_1_12': Dataset_Custom,
+            'ALL1': Dataset_Custom, 'ALL2': Dataset_Custom,
+            'ALL3': Dataset_Custom, 'ALL4': Dataset_Custom,
+            'msl_1_4': Dataset_Custom, 'swh_1_4': Dataset_Custom,
+            'u10_1_4': Dataset_Custom, 'v10_1_4': Dataset_Custom,
+            'sal_1_12': Dataset_Custom, 'sst_1_12': Dataset_Custom,
             'uo_1_12': Dataset_Custom, 'vo_1_12': Dataset_Custom,
-            'msl_1_12': Dataset_Custom, 'u10_1_12': Dataset_Custom, 'v10_1_12': Dataset_Custom,
-            'sst_1_4': Dataset_Custom, 'swh_1_4': Dataset_Custom,
-            'uo_1_4': Dataset_Custom, 'vo_1_4': Dataset_Custom,
-            'msl_1_4': Dataset_Custom, 'u10_1_4': Dataset_Custom, 'v10_1_4': Dataset_Custom,
+            'ssh_1_12': Dataset_Custom,
         }
         Data = data_dict[self.args.data]
         timeenc = 0 if args.embed!='timeF' else 1
@@ -335,16 +333,44 @@ class Exp_UniOcean(Exp_Basic):
             for i in range(preds.shape[-1]):
                 pred_i = preds[:, :, :, i]
                 true_i = trues[:, :, :, i]
-                mae_i, mse_i, rmse_i = self._masked_or_raw_metrics_np(pred_i, true_i)
+                if self.land_mask is not None:
+                    mask_np = self.land_mask.numpy()
+                    if mask_np.ndim > 1:
+                        mask_np = mask_np.reshape(-1)
+                    if pred_i.shape[-1] == mask_np.shape[0]:
+                        mask_bc = np.broadcast_to(mask_np.reshape(1, 1, -1), pred_i.shape)
+                        mse_i = np.sum((pred_i - true_i) ** 2 * mask_bc) / (np.sum(mask_bc) + 1e-8)
+                        rmse_i = np.sqrt(mse_i)
+                        mae_i = np.sum(np.abs(pred_i - true_i) * mask_bc) / (np.sum(mask_bc) + 1e-8)
+                    else:
+                        mae_i, mse_i, rmse_i, _, _ = metric(pred_i, true_i)
+                else:
+                    mae_i, mse_i, rmse_i, _, _ = metric(pred_i, true_i)
                 print('factor{} mse:{}, mae:{}, rmse:{}'.format(i + 1, mse_i, mae_i, rmse_i))
                 metric_pack.extend([mse_i, mae_i, rmse_i])
             np.save(folder_path+'metrics.npy', np.array(metric_pack))
             np.save(folder_path+'pred.npy', preds)
             np.save(folder_path+'true.npy', trues)
         else:
-            mae, mse, rmse = self._masked_or_raw_metrics_np(preds, trues)
-            print('mse:{}, mae:{}, rmse:{}'.format(mse, mae, rmse))
-            np.save(folder_path+'metrics.npy', np.array([mae, mse, rmse]))
+            if self.land_mask is not None:
+                mask_np = self.land_mask.numpy()
+                if mask_np.ndim > 1:
+                    mask_np = mask_np.reshape(-1)
+                if preds.shape[-1] == mask_np.shape[0]:
+                    mask_bc = np.broadcast_to(mask_np.reshape(1, 1, -1), preds.shape)
+                    mse_masked = np.sum((preds - trues) ** 2 * mask_bc) / (np.sum(mask_bc) + 1e-8)
+                    rmse_masked = np.sqrt(mse_masked)
+                    mae_masked = np.sum(np.abs(preds - trues) * mask_bc) / (np.sum(mask_bc) + 1e-8)
+                    print('mse:{}, mae:{}, rmse:{}'.format(mse_masked, mae_masked, rmse_masked))
+                    np.save(folder_path+'metrics.npy', np.array([mae_masked, mse_masked, rmse_masked]))
+                else:
+                    mae, mse, rmse, mape, mspe = metric(preds, trues)
+                    print('mse:{}, mae:{}, rmse:{}'.format(mse, mae, rmse))
+                    np.save(folder_path+'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
+            else:
+                mae, mse, rmse, mape, mspe = metric(preds, trues)
+                print('mse:{}, mae:{}, rmse:{}'.format(mse, mae, rmse))
+                np.save(folder_path+'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
             np.save(folder_path+'pred.npy', preds)
             np.save(folder_path+'true.npy', trues)
 
@@ -390,7 +416,10 @@ class Exp_UniOcean(Exp_Basic):
                 pred_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
             preds.append(pred.detach().cpu().numpy())
         preds = np.array(preds)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
+        if self._is_all_mode():
+            preds = preds.reshape(-1, preds.shape[-3], preds.shape[-2], preds.shape[-1])
+        else:
+            preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
         folder_path = os.path.join(getattr(self.args, 'results_dir', '/root/autodl-tmp/results'), setting) + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
@@ -438,9 +467,9 @@ class Exp_UniOcean(Exp_Basic):
             if self.args.get_prediction:
                 outputs = dataset_object.inverse_transform(outputs)
                 batch_y = dataset_object.inverse_transform(batch_y)
-                
-            f_dim = -1 if self.args.features=='MS' else 0
-            batch_y = batch_y[:,-self.args.pred_len:,f_dim:,:].to(self.device)
+
+            f_dim = -1 if self.args.features == 'MS' else 0
+            batch_y = batch_y[:, -self.args.pred_len:, f_dim:, :].to(self.device)
                 
         else:
             if self.args.model=='convlstm' or self.args.model=='gru':
@@ -454,15 +483,11 @@ class Exp_UniOcean(Exp_Basic):
             else:
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs,_ = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                        else:
-                            outputs,_ = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                        outputs = self._unwrap_forecast_out(
+                            self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark))
                 else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                    else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                    outputs = self._unwrap_forecast_out(
+                        self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark))
                 if self.args.inverse:
                     outputs = dataset_object.inverse_transform(outputs)
                 if self.args.get_prediction:
@@ -473,3 +498,4 @@ class Exp_UniOcean(Exp_Basic):
             batch_y = batch_y[:,-self.args.pred_len:,f_dim:].to(self.device)
 
         return outputs, batch_y
+    
