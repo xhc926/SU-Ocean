@@ -12,10 +12,12 @@ class Model(nn.Module):
         self.seq_len = configs.seq_len
         self.pred_len = configs.pred_len
         self.output_attention = configs.output_attention
-        self.use_norm = configs.use_norm
+        un = getattr(configs, 'simpletm_use_norm', getattr(configs, 'use_norm', True))
+        self.use_norm = bool(un) if not isinstance(un, bool) else un
         self.geomattn_dropout = configs.geomattn_dropout
         self.alpha = configs.alpha
-        self.kernel_size = configs.kernel_size
+        self.kernel_size = getattr(configs, 'simpletm_kernel_size', None)
+        requires_grad = bool(getattr(configs, 'requires_grad', True))
 
         enc_embedding = DataEmbedding_inverted(configs.seq_len, configs.d_model, 
                                                configs.embed, configs.freq, configs.dropout)
@@ -30,7 +32,7 @@ class Model(nn.Module):
                             output_attention=configs.output_attention, alpha=self.alpha
                         ),
                         configs.d_model, 
-                        requires_grad=configs.requires_grad, 
+                        requires_grad=requires_grad, 
                         wv=configs.wv, 
                         m=configs.m, 
                         d_channel=configs.dec_in, 
@@ -64,8 +66,11 @@ class Model(nn.Module):
         enc_embedding = self.enc_embedding
         encoder = self.encoder
         projector = self.projector
-        # Linear Projection             B L N -> B L' (pseudo temporal tokens) N 
+        # Linear projection: [B, L, N] -> [B, N(+time_tokens), d_model]
         enc_out = enc_embedding(x_enc, x_mark_enc) 
+        # Keep only spatial tokens (N). DataEmbedding_inverted may append time-feature
+        # tokens when x_mark_enc is provided; SWT groups must match spatial channel count.
+        enc_out = enc_out[:, :N, :]
 
         # SimpleTM Layer                B L' N -> B L' N 
         enc_out, attns = encoder(enc_out, attn_mask=None)
@@ -81,5 +86,5 @@ class Model(nn.Module):
 
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
-        dec_out, attns = self.forecast(x_enc, None, None, None)
-        return dec_out, attns 
+        dec_out, attns = self.forecast(x_enc, x_mark_enc, x_dec, x_mark_dec)
+        return dec_out, attns

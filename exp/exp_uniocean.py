@@ -6,6 +6,7 @@ from models.model_FEDformer import FEDformerUni,FEDformer
 from models.model_base import ConvLSTM,GRU
 from models.model_iTransformer import iTransformer, iTransformerUni, iTransformerUni4
 from models.model_iTransformer_ablation import iTransformerUniAbl
+from models.SimpleTM import Model as SimpleTM
 
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
@@ -49,6 +50,7 @@ class Exp_UniOcean(Exp_Basic):
             'itransformerUniOcean':iTransformerUni,
             'itransformerUniOcean4':iTransformerUni4,
             'itransformerUniAbl':iTransformerUniAbl,
+            'SimpleTM': SimpleTM,
         }
         if self.args.model =='convlstm':
             e_layers = self.args.e_layers
@@ -65,6 +67,8 @@ class Exp_UniOcean(Exp_Basic):
         if self.args.model == 'OLinear':
             from models.model_OLinear import Model as OLinearModel
             model = OLinearModel(self.args).float()
+        if self.args.model == 'SimpleTM':
+            model = model_dict[self.args.model](self.args).float()
         if self.args.model in ['informer','informerUniOcean','informer_two','autoformerUniOcean','fedformerUniOcean','autoformer','fedformer','itransformer','itransformerUniOcean','itransformerUniAbl','itransformerUniOcean4','itransformerUniOcean5']:
             e_layers = self.args.e_layers
 

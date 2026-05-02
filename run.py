@@ -112,7 +112,20 @@ parser.add_argument('--temp_stride', type=int, default=1)
 parser.add_argument('--embed_size', type=int, default=1)
 parser.add_argument('--CKA_flag', action='store_true', help='OLinear: optional CKA logging in encoder')
 
+# SimpleTM baseline args
+parser.add_argument('--geomattn_dropout', type=float, default=0.5)
+parser.add_argument('--requires_grad', type=int, default=1, help='SimpleTM learnable wavelets (1/0)')
+parser.add_argument('--wv', type=str, default='db1')
+parser.add_argument('--m', type=int, default=3)
+parser.add_argument('--simpletm_kernel_size', type=int, default=0, help='SimpleTM random wavelet kernel size; 0 means use wavelet default')
+parser.add_argument('--alpha', type=float, default=1.0)
+parser.add_argument('--simpletm_use_norm', type=int, default=1, help='SimpleTM use norm/denorm (1/0)')
+
 args = parser.parse_args()
+if args.simpletm_kernel_size <= 0:
+    args.simpletm_kernel_size = None
+args.requires_grad = bool(args.requires_grad)
+args.simpletm_use_norm = bool(args.simpletm_use_norm)
 
 log_dir = args.log_dir
 os.makedirs(log_dir, exist_ok=True)
