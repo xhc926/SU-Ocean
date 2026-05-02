@@ -4,7 +4,7 @@ from models.model_Informer import InformerUni, Informer,  Informer_two
 from models.model_Autoformer import AutoformerUni,Autoformer
 from models.model_FEDformer import FEDformerUni,FEDformer
 from models.model_base import ConvLSTM,GRU
-from models.model_iTransformer import iTransformer, iTransformerUni, iTransformerUni4
+from models.model_iTransformer import iTransformer, iTransformerUni
 from models.model_iTransformer_ablation import iTransformerUniAbl
 from models.model_OLinear import OLinear
 from models.model_SimpleTM import SimpleTM
@@ -50,7 +50,6 @@ class Exp_UniOcean(Exp_Basic):
             'gru':GRU,
             'itransformer':iTransformer,
             'itransformerUniOcean':iTransformerUni,
-            'itransformerUniOcean4':iTransformerUni4,
             'itransformerUniAbl':iTransformerUniAbl,
             'olinear': OLinear,
             'simpletm':SimpleTM,
@@ -502,7 +501,7 @@ class Exp_UniOcean(Exp_Basic):
             batch_y = batch_y[:, -self.args.pred_len:, f_dim:, :].to(self.device)
                 
         else:
-            if self.args.model=='convlstm' or self.args.model=='gru':
+            if self.args.model in ['convlstm', 'gru']:
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():outputs = self.model(batch_x)[0]
                 else:

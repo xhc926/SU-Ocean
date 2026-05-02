@@ -137,19 +137,6 @@ log_file_path = None
 
 args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
 
-if args.land_mask_path and (not os.path.exists(args.land_mask_path)):
-    print(f"[WARN] land_mask_path not found: {args.land_mask_path}. Fallback to no-mask training.")
-    args.land_mask_path = ''
-
-# ALL3: three variables (sal, ssh, sst) + iTransformerUni; remap old Uni5 runs.
-if args.data == 'ALL3' and args.model == 'itransformerUniOcean5':
-    print('[ALL3] Switching model to itransformerUniOcean (3 factors: sal, ssh, sst).')
-    args.model = 'itransformerUniOcean'
-
-if args.data == 'ALL4' and args.model not in ['itransformerUniOcean4', 'itransformerUniAbl']:
-    print('[ALL4] Forcing model to itransformerUniOcean4 (4 factors: sal, ssh, uo, vo).')
-    args.model = 'itransformerUniOcean4'
-
 if args.use_gpu and args.use_multi_gpu:
     args.devices = args.devices.replace(' ','')
     device_ids = args.devices.split(',')

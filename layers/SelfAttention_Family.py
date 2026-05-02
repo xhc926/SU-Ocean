@@ -12,7 +12,12 @@ from einops import rearrange, reduce
 from reformer_pytorch import LSHSelfAttention
 
 from utils.masking import TriangularCausalMask, ProbMask
-from utils.tools import plot_mat, moore_penrose_iter_pinv
+from utils.tools import moore_penrose_iter_pinv
+
+
+def plot_mat(*_args, **_kwargs):
+    """No-op debug hook to avoid visualization side effects in training."""
+    return None
 
 
 # from entmax import sparsemax, entmax15
@@ -166,10 +171,7 @@ class FullAttention(nn.Module):
             os.makedirs(self.save_folder, exist_ok=True)
         self.num_heads = 1
 
-        print(f'self.weight_plus in FullAttention: {self.weight_plus}')
-
-        print(f'ij_mat_flag in FullAttention:{self.ij_mat_flag}')
-        print(f'ij_mat_para in FullAttention:{self.ij_mat_para}')
+        # Suppress noisy init logs for repeated module construction.
 
         if self.imp_mode and self.token_num is not None:
             self.token_contribution = nn.Parameter(torch.zeros(1, self.num_heads or 1, 1, self.token_num))
@@ -370,10 +372,7 @@ class FullAttention_SF(nn.Module):
             os.makedirs(self.save_folder, exist_ok=True)
         self.num_heads = 1
 
-        print(f'self.weight_plus in FullAttention: {self.weight_plus}')
-
-        print(f'ij_mat_flag in FullAttention:{self.ij_mat_flag}')
-        print(f'ij_mat_para in FullAttention:{self.ij_mat_para}')
+        # Suppress noisy init logs for repeated module construction.
 
         if self.contri_flag:
             # [1,1,1,N]

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from layers.RevIN import RevIN
-from layers.Transformer_EncDec import Encoder_ori, LinearEncoder
+from layers.OLinear_Transformer_EncDec import Encoder_ori, LinearEncoder
 
 
 def _resolve_path(root_path: str, p: str) -> str:
@@ -17,7 +17,7 @@ def _resolve_path(root_path: str, p: str) -> str:
     return p
 
 
-class Model(nn.Module):
+class OLinear(nn.Module):
     """
     OLinear-style forecaster. Requires offline-generated Q matrices (see data/generate_corrmat.py):
       - q_mat_file: (seq_len, seq_len), temporal orthogonal basis from train-split covariance
@@ -25,18 +25,31 @@ class Model(nn.Module):
     Paths may be absolute or relative to configs.root_path.
     """
 
-    def __init__(self, configs):
-        super(Model, self).__init__()
-        self.pred_len = configs.pred_len
-        self.enc_in = configs.enc_in  # channels
-        self.seq_len = configs.seq_len
-        self.hidden_size = self.d_model = configs.d_model  # hidden_size
-        self.d_ff = configs.d_ff  # d_ff
+    def __init__(self, enc_in, dec_in, c_out, seq_len, label_len, out_len,
+                 factor=5, d_model=512, n_heads=8, e_layers=3, d_layers=2, d_ff=512, move_avg=25,
+                 dropout=0.0, attn='prob', embed='fixed', freq='h', activation='gelu',
+                 output_attention=False, distil=True, mix=True, use_multi_scale=False, patembed=False,
+                 scales=[32, 16, 4, 1], scale_factor=4,
+                 version='Wavelets', mode_select='low', modes=64, L=3, base='legendre', cross_activation='tanh',
+                 conv_dff=32, device=torch.device('cuda:0'),
+                 land_mask_path='', scale_mask_mode='soft',
+                 Q_chan_indep=False, q_mat_file='', q_out_mat_file='',
+                 Q_MAT_file='', Q_OUT_MAT_file='',
+                 temp_patch_len=1, temp_stride=1, embed_size=1, CKA_flag=False,
+                 root_path='.'):
+        super(OLinear, self).__init__()
+        # Keep compatibility with Exp's optional kwargs injection.
+        self.land_mask_path = land_mask_path
+        self.scale_mask_mode = scale_mask_mode
+        self.pred_len = out_len
+        self.enc_in = enc_in  # channels
+        self.seq_len = seq_len
+        self.hidden_size = self.d_model = d_model  # hidden_size
+        self.d_ff = d_ff  # d_ff
+        self.Q_chan_indep = bool(Q_chan_indep)
 
-        self.Q_chan_indep = getattr(configs, 'Q_chan_indep', False)
-
-        q_mat_dir = configs.Q_MAT_file if self.Q_chan_indep else configs.q_mat_file
-        q_mat_dir = _resolve_path(configs.root_path, q_mat_dir)
+        q_mat_dir = Q_MAT_file if self.Q_chan_indep else q_mat_file
+        q_mat_dir = _resolve_path(root_path, q_mat_dir)
         if not os.path.isfile(q_mat_dir):
             raise FileNotFoundError(
                 f'OLinear: Q_in not found: {q_mat_dir} (need shape seq_len={self.seq_len}). '
@@ -44,8 +57,8 @@ class Model(nn.Module):
                 f'or pass --q_mat_file.'
             )
 
-        q_out_mat_dir = configs.Q_OUT_MAT_file if self.Q_chan_indep else configs.q_out_mat_file
-        q_out_mat_dir = _resolve_path(configs.root_path, q_out_mat_dir)
+        q_out_mat_dir = Q_OUT_MAT_file if self.Q_chan_indep else q_out_mat_file
+        q_out_mat_dir = _resolve_path(root_path, q_out_mat_dir)
         if not os.path.isfile(q_out_mat_dir):
             raise FileNotFoundError(
                 f'OLinear: Q_out not found: {q_out_mat_dir} (need shape pred_len={self.pred_len}). '
@@ -68,9 +81,9 @@ class Model(nn.Module):
         self.register_buffer('Q_mat', torch.from_numpy(q_np))
         self.register_buffer('Q_out_mat', torch.from_numpy(q_out_np))
 
-        self.patch_len = getattr(configs, 'temp_patch_len', 1)
-        self.stride = getattr(configs, 'temp_stride', 1)
-        self.embed_size = configs.embed_size
+        self.patch_len = temp_patch_len
+        self.stride = temp_stride
+        self.embed_size = embed_size
 
         self.embeddings = nn.Parameter(torch.randn(1, self.embed_size))
 
@@ -82,19 +95,19 @@ class Model(nn.Module):
 
         # for final input and output
         self.revin_layer = RevIN(self.enc_in, affine=True)
-        self.dropout = nn.Dropout(configs.dropout)
+        self.dropout = nn.Dropout(dropout)
 
         # #############  transformer related  #########
         self.encoder = Encoder_ori(
             [
                 LinearEncoder(
-                    d_model=configs.d_model, d_ff=configs.d_ff, CovMat=None,
-                    dropout=configs.dropout, activation=configs.activation, token_num=self.enc_in,
-                ) for _ in range(configs.e_layers)
+                    d_model=d_model, d_ff=d_ff, CovMat=None,
+                    dropout=dropout, activation=activation, token_num=self.enc_in,
+                ) for _ in range(e_layers)
             ],
-            norm_layer=nn.LayerNorm(configs.d_model),
+            norm_layer=nn.LayerNorm(d_model),
             one_output=True,
-            CKA_flag=bool(getattr(configs, 'CKA_flag', False)),
+            CKA_flag=bool(CKA_flag),
         )
         self.ortho_trans = nn.Sequential(
             nn.Linear(self.seq_len * self.embed_size, self.d_model),
