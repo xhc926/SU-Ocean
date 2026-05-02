@@ -6,8 +6,9 @@ from models.model_FEDformer import FEDformerUni,FEDformer
 from models.model_base import ConvLSTM,GRU
 from models.model_iTransformer import iTransformer, iTransformerUni
 from models.model_iTransformer_ablation import iTransformerUniAbl
-from models.model_SimpleTM import Model as SimpleTM
-
+from models.model_OLinear import OLinear
+from models.model_SimpleTM import SimpleTM
+from models.model_Dualformer import Dualformer
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
 
@@ -36,6 +37,7 @@ class Exp_UniOcean(Exp_Basic):
             self.land_mask = torch.from_numpy(mask_np).float()
     
     def _build_model(self):
+        model_name = self.args.model
         model_dict = {
             'informerUniOcean':InformerUni,
             'informer':Informer,
@@ -49,42 +51,67 @@ class Exp_UniOcean(Exp_Basic):
             'itransformer':iTransformer,
             'itransformerUniOcean':iTransformerUni,
             'itransformerUniAbl':iTransformerUniAbl,
-            'SimpleTM':SimpleTM,
+            'olinear': OLinear,
+            'simpletm':SimpleTM,
+            'dualformer':Dualformer,
         }
-        if self.args.model =='convlstm':
-            e_layers = self.args.e_layers
-            model = model_dict[self.args.model](
-                self.args.input_dim, self.args.hidden_dim, self.args.kernel_size, 
-                self.args.num_layers, self.args.seq_len, self.args.batch_first, 
+
+        def _model_extra_init_kwargs(model_cls):
+            sig = inspect.signature(model_cls.__init__)
+            kw = {}
+            if 'land_mask_path' in sig.parameters:
+                kw['land_mask_path'] = getattr(self.args, 'land_mask_path', '')
+            if 'scale_mask_mode' in sig.parameters:
+                kw['scale_mask_mode'] = getattr(self.args, 'scale_mask_mode', 'soft')
+            return kw
+
+        model = None
+        if model_name == 'convlstm':
+            model = model_dict[model_name](
+                self.args.input_dim, self.args.hidden_dim, self.args.kernel_size,
+                self.args.num_layers, self.args.seq_len, self.args.batch_first,
                 self.args.bias, self.args.return_all_layers, self.device
             ).float()
-        if self.args.model =='gru':
-             e_layers = self.args.e_layers
-             model = model_dict[self.args.model](
-                 self.args.enc_in, self.args.d_model, self.args.num_layers,
-             )
-        if self.args.model == 'OLinear':
-            from models.model_OLinear import Model as OLinearModel
-            model = OLinearModel(self.args).float()
-        if self.args.model == 'SimpleTM':
-            model = model_dict[self.args.model](self.args).float()
-        if self.args.model in ['informer','informerUniOcean','informer_two','autoformerUniOcean','fedformerUniOcean','autoformer','fedformer','itransformer','itransformerUniOcean','itransformerUniAbl','itransformerUniOcean4','itransformerUniOcean5']:
-            e_layers = self.args.e_layers
-
-            def _model_extra_init_kwargs(model_cls):
-                sig = inspect.signature(model_cls.__init__)
-                kw = {}
-                if 'land_mask_path' in sig.parameters:
-                    kw['land_mask_path'] = getattr(self.args, 'land_mask_path', '')
-                if 'scale_mask_mode' in sig.parameters:
-                    kw['scale_mask_mode'] = getattr(self.args, 'scale_mask_mode', 'soft')
-                return kw
-
-            model = model_dict[self.args.model](
-                self.args.enc_in, self.args.dec_in, self.args.c_out, 
-                self.args.seq_len, self.args.label_len, self.args.pred_len, 
-                self.args.factor, self.args.d_model, self.args.n_heads, 
-                e_layers, self.args.d_layers, self.args.d_ff,
+        elif model_name == 'gru':
+            model = model_dict[model_name](
+                self.args.enc_in, self.args.d_model, self.args.num_layers,
+            )
+        elif model_name in ['informer', 'informerUniOcean', 'informer_two',
+                            'autoformerUniOcean', 'fedformerUniOcean',
+                            'autoformer', 'fedformer',
+                            'itransformer', 'itransformerUniOcean', 'itransformerUniAbl',
+                            'itransformerUniOcean4', 'itransformerUniOcean5',
+                            'olinear', 'simpletm', 'dualformer']:
+            model_kwargs = {}
+            if model_name == 'simpletm':
+                model_kwargs.update({
+                    'geomattn_dropout': getattr(self.args, 'geomattn_dropout', 0.5),
+                    'requires_grad': getattr(self.args, 'requires_grad', 1),
+                    'wv': getattr(self.args, 'wv', 'db1'),
+                    'm': getattr(self.args, 'm', 3),
+                    'simpletm_kernel_size': getattr(self.args, 'simpletm_kernel_size', None),
+                    'alpha': getattr(self.args, 'alpha', 1.0),
+                    'simpletm_use_norm': getattr(self.args, 'simpletm_use_norm', 1),
+                })
+            elif model_name == 'olinear':
+                model_kwargs.update({
+                    'Q_chan_indep': getattr(self.args, 'Q_chan_indep', False),
+                    'q_mat_file': getattr(self.args, 'q_mat_file', ''),
+                    'q_out_mat_file': getattr(self.args, 'q_out_mat_file', ''),
+                    'Q_MAT_file': getattr(self.args, 'Q_MAT_file', ''),
+                    'Q_OUT_MAT_file': getattr(self.args, 'Q_OUT_MAT_file', ''),
+                    'temp_patch_len': getattr(self.args, 'temp_patch_len', 1),
+                    'temp_stride': getattr(self.args, 'temp_stride', 1),
+                    'embed_size': getattr(self.args, 'embed_size', 1),
+                    'CKA_flag': getattr(self.args, 'CKA_flag', False),
+                    'root_path': getattr(self.args, 'root_path', '.'),
+                })
+            model_kwargs.update(_model_extra_init_kwargs(model_dict[model_name]))
+            model = model_dict[model_name](
+                self.args.enc_in, self.args.dec_in, self.args.c_out,
+                self.args.seq_len, self.args.label_len, self.args.pred_len,
+                self.args.factor, self.args.d_model, self.args.n_heads,
+                self.args.e_layers, self.args.d_layers, self.args.d_ff,
                 self.args.move_avg, self.args.dropout, self.args.attn,
                 self.args.embed, self.args.freq, self.args.activation,
                 self.args.output_attention, self.args.distil, self.args.mix,
@@ -93,8 +120,10 @@ class Exp_UniOcean(Exp_Basic):
                 self.args.version, self.args.mode_select, self.args.modes,
                 self.args.L, self.args.base, self.args.cross_activation,
                 self.args.conv_dff, self.device,
-                **_model_extra_init_kwargs(model_dict[self.args.model])
+                **model_kwargs
             ).float()
+        else:
+            raise ValueError(f'Unknown model: {self.args.model}')
 
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
@@ -472,7 +501,7 @@ class Exp_UniOcean(Exp_Basic):
             batch_y = batch_y[:, -self.args.pred_len:, f_dim:, :].to(self.device)
                 
         else:
-            if self.args.model=='convlstm' or self.args.model=='gru':
+            if self.args.model in ['convlstm', 'gru']:
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():outputs = self.model(batch_x)[0]
                 else:

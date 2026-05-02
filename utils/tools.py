@@ -2,23 +2,48 @@ import numpy as np
 import torch
 from einops import rearrange
 
-def adjust_learning_rate(optimizer, epoch, args):
-    if args.lradj=='type1':
-        lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch-1) // 1))}
-    elif args.lradj=='type2':
+def adjust_learning_rate(optimizer, *params, **kwargs):
+    """
+    Compatible with both call styles:
+    - adjust_learning_rate(optimizer, epoch, args)
+    - adjust_learning_rate(optimizer, scheduler, epoch, args, printout=True)
+    """
+    scheduler = None
+    printout = kwargs.get('printout', True)
+    if len(params) == 2:
+        epoch, args = params
+    elif len(params) >= 3:
+        scheduler, epoch, args = params[0], params[1], params[2]
+        if len(params) >= 4:
+            printout = params[3]
+    else:
+        raise TypeError('adjust_learning_rate expects (optimizer, epoch, args) or (optimizer, scheduler, epoch, args)')
+
+    if args.lradj == 'type1':
+        lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch - 1) // 1))}
+    elif args.lradj == 'type2':
         lr_adjust = {
             2: 5e-5, 4: 1e-5, 6: 5e-6, 8: 1e-6, 
             10: 5e-7, 15: 1e-7, 20: 5e-8
         }
-    elif args.lradj=='type3':
-        lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch-1) // 4))}
-    elif args.lradj=='type4':
-        lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch-1) // 2))}
+    elif args.lradj == 'type3':
+        lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch - 1) // 4))}
+    elif args.lradj == 'type4':
+        lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch - 1) // 2))}
+    elif args.lradj == 'PEMS':
+        lr_adjust = {epoch: args.learning_rate * (0.95 ** (epoch // 1))}
+    elif args.lradj == 'TST':
+        current_lr = scheduler.get_last_lr()[0] if scheduler is not None else optimizer.param_groups[0]['lr']
+        lr_adjust = {epoch: current_lr}
+    else:
+        lr_adjust = {}
+
     if epoch in lr_adjust.keys():
         lr = lr_adjust[epoch]
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
-        print('Updating learning rate to {}'.format(lr))
+        if printout:
+            print('Updating learning rate to {}'.format(lr))
 
 class EarlyStopping:
     def __init__(self, patience=7, verbose=False, delta=0):
@@ -57,9 +82,9 @@ class dotdict(dict):
     __delattr__ = dict.__delitem__
 
 class StandardScaler():
-    def __init__(self):
-        self.mean = 0.
-        self.std = 1.
+    def __init__(self, mean=None, std=None):
+        self.mean = 0. if mean is None else mean
+        self.std = 1. if std is None else std
     
     def fit(self, data):
         data_np = data if isinstance(data, np.ndarray) else np.array(data)
@@ -115,6 +140,27 @@ def moore_penrose_iter_pinv(x, iters=6):
     return z
 
 
-def plot_mat(*_args, **_kwargs):
-    """Optional attention visualization (unused in training)."""
-    pass
+def adjustment(gt, pred):
+    anomaly_state = False
+    for i in range(len(gt)):
+        if gt[i] == 1 and pred[i] == 1 and not anomaly_state:
+            anomaly_state = True
+            for j in range(i, 0, -1):
+                if gt[j] == 0:
+                    break
+                if pred[j] == 0:
+                    pred[j] = 1
+            for j in range(i, len(gt)):
+                if gt[j] == 0:
+                    break
+                if pred[j] == 0:
+                    pred[j] = 1
+        elif gt[i] == 0:
+            anomaly_state = False
+        if anomaly_state:
+            pred[i] = 1
+    return gt, pred
+
+
+def cal_accuracy(y_pred, y_true):
+    return np.mean(y_pred == y_true)

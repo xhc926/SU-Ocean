@@ -76,6 +76,12 @@ def time_features_from_frequency_str(freq_str: str) -> List[TimeFeature]:
     raise RuntimeError(supported_freq_msg)
 
 def time_features(dates, timeenc=1, freq='h'):
+    # Backward compatibility: allow old SSformer-style call
+    # time_features(dates, freq) where freq is passed positionally.
+    if isinstance(timeenc, str):
+        freq = timeenc
+        timeenc = 1
+
     if timeenc==0:
         dates['month'] = dates.date.apply(lambda row:row.month,1)
         dates['day'] = dates.date.apply(lambda row:row.day,1)

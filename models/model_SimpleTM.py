@@ -6,21 +6,32 @@ from layers.SWTAttention_Family import GeomAttentionLayer, GeomAttention
 from layers.Embed import DataEmbedding_inverted
 
 
-class Model(nn.Module):
-    def __init__(self, configs):
-        super(Model, self).__init__()
-        self.seq_len = configs.seq_len
-        self.pred_len = configs.pred_len
-        self.output_attention = configs.output_attention
-        un = getattr(configs, 'simpletm_use_norm', getattr(configs, 'use_norm', True))
+class SimpleTM(nn.Module):
+    def __init__(self, enc_in, dec_in, c_out, seq_len, label_len, out_len,
+                 factor=5, d_model=512, n_heads=8, e_layers=3, d_layers=2, d_ff=512, move_avg=25,
+                 dropout=0.0, attn='prob', embed='fixed', freq='h', activation='gelu',
+                 output_attention=False, distil=True, mix=True, use_multi_scale=False, patembed=False,
+                 scales=[32, 16, 4, 1], scale_factor=4,
+                 version='Wavelets', mode_select='low', modes=64, L=3, base='legendre', cross_activation='tanh',
+                 conv_dff=32, device=torch.device('cuda:0'),
+                 land_mask_path='', scale_mask_mode='soft',
+                 geomattn_dropout=0.5, requires_grad=1, wv='db1', m=3,
+                 simpletm_kernel_size=None, alpha=1.0, simpletm_use_norm=1):
+        super(SimpleTM, self).__init__()
+        # Keep compatibility with Exp's optional kwargs injection.
+        self.land_mask_path = land_mask_path
+        self.scale_mask_mode = scale_mask_mode
+        self.seq_len = seq_len
+        self.pred_len = out_len
+        self.output_attention = output_attention
+        un = simpletm_use_norm
         self.use_norm = bool(un) if not isinstance(un, bool) else un
-        self.geomattn_dropout = configs.geomattn_dropout
-        self.alpha = configs.alpha
-        self.kernel_size = getattr(configs, 'simpletm_kernel_size', None)
-        requires_grad = bool(getattr(configs, 'requires_grad', True))
+        self.geomattn_dropout = geomattn_dropout
+        self.alpha = alpha
+        self.kernel_size = simpletm_kernel_size
+        requires_grad = bool(requires_grad)
 
-        enc_embedding = DataEmbedding_inverted(configs.seq_len, configs.d_model, 
-                                               configs.embed, configs.freq, configs.dropout)
+        enc_embedding = DataEmbedding_inverted(seq_len, d_model, embed, freq, dropout)
         self.enc_embedding = enc_embedding
 
         encoder = Encoder(
@@ -28,28 +39,28 @@ class Model(nn.Module):
                 EncoderLayer(
                     GeomAttentionLayer(
                         GeomAttention(
-                            False, configs.factor, attention_dropout=configs.dropout, 
-                            output_attention=configs.output_attention, alpha=self.alpha
+                            False, factor, attention_dropout=dropout, 
+                            output_attention=output_attention, alpha=self.alpha
                         ),
-                        configs.d_model, 
+                        d_model, 
                         requires_grad=requires_grad, 
-                        wv=configs.wv, 
-                        m=configs.m, 
-                        d_channel=configs.dec_in, 
+                        wv=wv, 
+                        m=m, 
+                        d_channel=dec_in, 
                         kernel_size=self.kernel_size, 
                         geomattn_dropout=self.geomattn_dropout
                     ),
-                    configs.d_model,
-                    configs.d_ff,
-                    dropout=configs.dropout,
-                    activation=configs.activation,
-                ) for l in range(configs.e_layers) 
+                    d_model,
+                    d_ff,
+                    dropout=dropout,
+                    activation=activation,
+                ) for l in range(e_layers) 
             ],
-            norm_layer=torch.nn.LayerNorm(configs.d_model)
+            norm_layer=torch.nn.LayerNorm(d_model)
         )
         self.encoder = encoder
 
-        projector = nn.Linear(configs.d_model, self.pred_len, bias=True)
+        projector = nn.Linear(d_model, self.pred_len, bias=True)
         self.projector = projector
 
 

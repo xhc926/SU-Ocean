@@ -29,13 +29,13 @@ LOG_DIR="${LOG_DIR:-/root/autodl-tmp/olinear/area2/logs}"
 RESULTS_DIR="${RESULTS_DIR:-/root/autodl-tmp/olinear/area2/results}"
 
 VARS=(swh_1_4 u10_1_4 v10_1_4)
-SEQ_LENS=(32 48)
+SEQ_LENS=(16 24 32 48)
 
 if [ -n "${1:-}" ]; then
   VARS=("$1")
 fi
 
-MODEL="OLinear"
+MODEL="olinear"
 
 # Q .npys 的文件名前缀：sal_1_12 -> sal（取第一个 '_' 前字段）
 q_prefix_for_data() {
