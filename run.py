@@ -121,6 +121,10 @@ parser.add_argument('--simpletm_kernel_size', type=int, default=0, help='SimpleT
 parser.add_argument('--alpha', type=float, default=1.0)
 parser.add_argument('--simpletm_use_norm', type=int, default=1, help='SimpleTM use norm/denorm (1/0)')
 
+# EMAformer baseline args
+parser.add_argument('--cycle', type=int, default=24, help='EMAformer: phase cycle length')
+parser.add_argument('--output_proj_dropout', type=float, default=0.1, help='EMAformer: output projection dropout')
+
 args = parser.parse_args()
 if args.simpletm_kernel_size <= 0:
     args.simpletm_kernel_size = None

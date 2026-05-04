@@ -10,6 +10,7 @@ from models.model_iTransformer_ablation import iTransformerUniAbl
 from models.model_OLinear import OLinear
 from models.model_SimpleTM import SimpleTM
 from models.model_Dualformer import Dualformer
+from models.model_EMAformer import EMAformer
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
 
@@ -56,6 +57,7 @@ class Exp_UniOcean(Exp_Basic):
             'olinear': OLinear,
             'simpletm':SimpleTM,
             'dualformer':Dualformer,
+            'emaformer':EMAformer,
         }
 
         def _model_extra_init_kwargs(model_cls):
@@ -83,7 +85,7 @@ class Exp_UniOcean(Exp_Basic):
                             'autoformer', 'fedformer',
                             'itransformer', 'itransformerUniOcean', 'itransformerUniAbl',
                             'itransformerUniOcean4', 'itransformerUniOcean5',
-                            'olinear', 'simpletm', 'dualformer']:
+                            'olinear', 'simpletm', 'dualformer', 'emaformer']:
             model_kwargs = {}
             if model_name == 'simpletm':
                 model_kwargs.update({
