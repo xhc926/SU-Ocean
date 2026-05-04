@@ -40,9 +40,7 @@ class iTransformerUniAbl(iTransformerUni4):
                  conv_dff=32,
                  device=torch.device('cuda:0'),
                  land_mask_path='',
-                 scale_mask_mode='soft',
-                 single_factor_ablation=False,
-                 ablation_factor_idx=0):
+                 scale_mask_mode='soft'):
         super(iTransformerUniAbl, self).__init__(
             enc_in, dec_in, c_out, seq_len, label_len, out_len,
             factor=factor, d_model=d_model, n_heads=n_heads, e_layers=e_layers, d_layers=d_layers, d_ff=d_ff, move_avg=move_avg,
@@ -54,12 +52,7 @@ class iTransformerUniAbl(iTransformerUni4):
             device=device,
             land_mask_path=land_mask_path,
             scale_mask_mode=scale_mask_mode,
-            single_factor_ablation=False,
-            ablation_factor_idx=ablation_factor_idx
         )
-
-        # Force full 4-factor forward path; this class is for "keep inputs, remove cross-factor fusion".
-        self.single_factor_ablation = False
 
         # Replace cross-factor MLPs with identity-like selectors on each factor slice.
         self.mlp_one = _SelfFactorSelector(0, self.d_model)

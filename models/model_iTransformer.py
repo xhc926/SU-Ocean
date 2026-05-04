@@ -271,7 +271,6 @@ class iTransformerUni(nn.Module):
             self.space_embedding(x_enc[:,:,:,1]),
             self.space_embedding(x_enc[:,:,:,2]),
         ]
-        active_ids = [self.ablation_factor_idx] if self.single_factor_ablation else [0, 1, 2]
 
         fusions = [self.scale_fusions_one, self.scale_fusions_two, self.scale_fusions_three]
         embeddings = [self.enc_embedding_one, self.enc_embedding_two, self.enc_embedding_three]
@@ -289,7 +288,7 @@ class iTransformerUni(nn.Module):
         for scale in self.spatial_scales:
             key = str(scale)
             
-            for i in active_ids:
+            for i in range(3):
                 x_scale_enc = self._spatial_downsample(x_factor[i], scale)
                 n_spatial_tokens = x_scale_enc.shape[-1]
                 
@@ -337,25 +336,12 @@ class iTransformerUni(nn.Module):
                     fused_input = F.dropout(fused_input, p=self.dropout * 0.3, inplace=False)
                 
                 out_hidden, attns_tmp = encoders[i](fused_input, attn_mask=None)
-                if i == active_ids[0] and scale == self.spatial_scales[-1]:
+                if i == 0 and scale == self.spatial_scales[-1]:
                     attns_one = attns_tmp
                 
                 hidden_prev[i] = out_hidden[:, :n_spatial_tokens, :]
                 
             prev_scale = scale
-
-        if self.single_factor_ablation:
-            i = self.ablation_factor_idx
-            dec_out_scale = projectors[i](hidden_prev[i]).permute(0, 2, 1)
-            if self.training:
-                dec_out_scale = F.dropout(dec_out_scale, p=self.dropout, inplace=False)
-            if self.use_norm:
-                dec_out_scale = dec_out_scale * final_stdevs[i][:, :1, :].repeat(1, self.pred_len, 1)
-                dec_out_scale = dec_out_scale + final_means[i][:, :1, :].repeat(1, self.pred_len, 1)
-            dec_out = dec_out_scale.unsqueeze(3)
-            if self.output_attention:
-                return dec_out[:, -self.pred_len:, :, :], attns_one
-            return dec_out[:, -self.pred_len:, :, :]
 
         all_factors = torch.cat(hidden_prev, dim=2)  # [B, D, 3 * d_model]
         fused_list = [mlps[i](all_factors) for i in range(3)]
@@ -395,9 +381,7 @@ class iTransformerUni4(nn.Module):
                 conv_dff=32,
                 device=torch.device('cuda:0'),
                 land_mask_path='',
-                scale_mask_mode='soft',
-                single_factor_ablation=False,
-                ablation_factor_idx=0):
+                scale_mask_mode='soft'):
         super(iTransformerUni4, self).__init__()
         self.pred_len = out_len
         self.attn = attn
@@ -410,10 +394,6 @@ class iTransformerUni4(nn.Module):
         self.scales = scales
         self.d_model = d_model
         self.factor_num = 4
-        self.single_factor_ablation = bool(single_factor_ablation)
-        self.ablation_factor_idx = int(ablation_factor_idx)
-        if self.ablation_factor_idx < 0 or self.ablation_factor_idx >= self.factor_num:
-            raise ValueError("ablation_factor_idx must be in [0, {}], got {}".format(self.factor_num - 1, self.ablation_factor_idx))
         self.land_mask_flat = None
         self.scale_mask_mode = str(scale_mask_mode).lower()
         if self.scale_mask_mode not in ['soft', 'hard', 'off']:
@@ -525,7 +505,6 @@ class iTransformerUni4(nn.Module):
             raise ValueError("iTransformerUni4 expects 4 factors in x_enc, got {}".format(x_enc.shape[-1]))
 
         x_factor = [self.space_embedding(x_enc[:, :, :, i]) for i in range(self.factor_num)]
-        active_ids = [self.ablation_factor_idx] if self.single_factor_ablation else list(range(self.factor_num))
 
         hidden_prev = [None for _ in range(self.factor_num)]
         prev_scale = None
@@ -537,7 +516,7 @@ class iTransformerUni4(nn.Module):
         for scale in self.spatial_scales:
             key = str(scale)
 
-            for i in active_ids:
+            for i in range(self.factor_num):
                 x_scale_enc = self._spatial_downsample(x_factor[i], scale)
                 n_spatial_tokens = x_scale_enc.shape[-1]
 
@@ -583,24 +562,11 @@ class iTransformerUni4(nn.Module):
                     fused_input = F.dropout(fused_input, p=self.dropout * 0.3, inplace=False)
 
                 out_hidden, attns_tmp = self.encoders[i](fused_input, attn_mask=None)
-                if i == active_ids[0] and scale == self.spatial_scales[-1]:
+                if i == 0 and scale == self.spatial_scales[-1]:
                     attns_one = attns_tmp
 
                 hidden_prev[i] = out_hidden[:, :n_spatial_tokens, :]
             prev_scale = scale
-
-        if self.single_factor_ablation:
-            i = self.ablation_factor_idx
-            dec_out_scale = self.projectors[i](hidden_prev[i]).permute(0, 2, 1)
-            if self.training:
-                dec_out_scale = F.dropout(dec_out_scale, p=self.dropout, inplace=False)
-            if self.use_norm:
-                dec_out_scale = dec_out_scale * final_stdevs[i][:, :1, :].repeat(1, self.pred_len, 1)
-                dec_out_scale = dec_out_scale + final_means[i][:, :1, :].repeat(1, self.pred_len, 1)
-            dec_out = dec_out_scale.unsqueeze(3)
-            if self.output_attention:
-                return dec_out[:, -self.pred_len:, :, :], attns_one
-            return dec_out[:, -self.pred_len:, :, :]
 
         all_factors = torch.cat(hidden_prev, dim=2)
         mlps = [self.mlp_one, self.mlp_two, self.mlp_three, self.mlp_four]
