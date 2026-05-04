@@ -44,11 +44,9 @@ class Dataset_Custom(Dataset):
         self.__read_data__()
 
     def __read_data__(self):
-        _is_multi_factor = (self.root_path in ['./data/ALL/', '/root/autodl-tmp/', '/root/autodl-tmp/ALL/', '/root/autodl-tmp/data/upsampled/1-4/area1',
+        _is_multi_factor = (self.root_path in ['./data/ALL/', '/root/autodl-tmp/data/upsampled/1-4/area1',
                                                  '/root/autodl-tmp/data/upsampled/1-4/area2',
-                                                 '/root/autodl-tmp/data/upsampled/1-12/area3',
-                                                 '/root/autodl-tmp/data/upsampled/1-12/area3/short',
-                                                 '/root/autodl-tmp/ms/results/area3']) and \
+                                                 '/root/autodl-tmp/data/upsampled/1-12/area3']) and \
             self.data_path in ['ALL1.pkl', 'ALL2.pkl', 'ALL3.pkl', 'ALL4.pkl', 'ALL5.pkl', 'ALL6.pkl']
 
         if _is_multi_factor:

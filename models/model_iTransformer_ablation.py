@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from models.model_iTransformer import iTransformerUni4
+from models.model_iTransformer import iTransformerUni4, iTransformerUni
 
 
 class _SelfFactorSelector(nn.Module):
@@ -65,4 +65,5 @@ class iTransformerUniAbl(iTransformerUni4):
         self.mlp_one = _SelfFactorSelector(0, self.d_model)
         self.mlp_two = _SelfFactorSelector(1, self.d_model)
         self.mlp_three = _SelfFactorSelector(2, self.d_model)
+        # For 3-factor ablation, we don't need the fourth MLP.
         self.mlp_four = _SelfFactorSelector(3, self.d_model)

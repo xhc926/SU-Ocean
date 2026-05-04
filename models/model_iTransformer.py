@@ -164,10 +164,6 @@ class iTransformerUni(nn.Module):
         self.scales = scales
         self.d_model = d_model
         self.factor_num = 3
-        self.single_factor_ablation = bool(single_factor_ablation)
-        self.ablation_factor_idx = int(ablation_factor_idx)
-        if self.ablation_factor_idx < 0 or self.ablation_factor_idx >= self.factor_num:
-            raise ValueError("ablation_factor_idx must be in [0, {}], got {}".format(self.factor_num - 1, self.ablation_factor_idx))
         self.land_mask_flat = None
         self.scale_mask_mode = str(scale_mask_mode).lower()
         if self.scale_mask_mode not in ['soft', 'hard', 'off']:

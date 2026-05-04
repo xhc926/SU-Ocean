@@ -60,6 +60,8 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="/root/autodl-tmp/data/upsampled/1-12/area3",
         help="Directory containing sal.pkl, uo.pkl, vo.pkl, ssh.pkl",
+        # default="/root/autodl-tmp/data/upsampled/1-4/area2",
+        # help="Directory containing swh.pkl, u10.pkl, v10.pkl",
     )
     p.add_argument(
         "--out-dir",
@@ -104,10 +106,15 @@ def main() -> int:
     ratio = train_ratio * args.base_ratio
 
     datasets = [
+        # area3
         ("sal", "sal.pkl"),
         ("uo", "uo.pkl"),
         ("vo", "vo.pkl"),
         ("ssh", "ssh.pkl"),
+        # area2
+        ("swh", "swh.pkl"),
+        ("u10", "u10.pkl"),
+        ("v10", "v10.pkl")
     ]
 
     print(f"AREA_ROOT={area_root}")

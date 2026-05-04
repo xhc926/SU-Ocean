@@ -34,7 +34,7 @@ for SEQ_LEN in "${SEQ_LENS[@]}"; do
       --seq_len $SEQ_LEN \
       --label_len $LABEL_LEN \
       --pred_len $PRED_LEN \
-      --d_model 1024 \
+      --d_model 2048 \
       --n_heads 4 \
       --e_layers 2 \
       --d_layers 1 \

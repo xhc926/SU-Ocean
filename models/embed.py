@@ -110,8 +110,6 @@ class SpaceEmbedding(nn.Module):
                 mask_2d = self.land_mask_2d_9271.to(x.device)
             elif self.land_mask_1d is not None and self.land_mask_1d.numel() == D:
                 mask_2d = self.land_mask_1d.reshape(73, 127).to(x.device)
-        elif D == 6411:
-            x = x.reshape(B, C, 3, 2137)
         elif D == 1075:
             x = x.reshape(B, C, 25, 43)
             if self.land_mask_2d_1075 is not None:

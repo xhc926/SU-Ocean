@@ -7,7 +7,11 @@
 #
 # enc_in/dec_in/c_out 由 run.py 的 data_parser 按 --data 与 --features 自动设置，无需在脚本里写。
 
+<<<<<<< HEAD
 VARS=(sal_1_12 ssh_1_12 uo_1_12 vo_1_12)
+=======
+VARS=(swh_1_4 u10_1_4 v10_1_4)
+>>>>>>> origin/area2
 SEQ_LENS=(32 48)
 if [ -n "$1" ]; then
   VARS=("$1")
@@ -28,6 +32,7 @@ for SEQ_LEN in "${SEQ_LENS[@]}"; do
       --results_dir /root/autodl-tmp/baseline/area3/results \
       --model $MODEL \
       --data $VAR \
+      --land_mask_path /root/autodl-tmp/data/upsampled/1-12/area3/land_mask.pkl \
       --features M \
       --attn prob \
       --freq w \

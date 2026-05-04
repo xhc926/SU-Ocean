@@ -1,6 +1,6 @@
 #!/bin/bash
 # Multiscale: ALL4 四要素（sal / ssh / uo / vo）+ iTransformerUniOcean4。
-# 数据目录：/root/autodl-tmp/ms/results/area3（非 short），需含 sal.pkl ssh.pkl uo.pkl vo.pkl。
+# 数据目录：/root/autodl-tmp/ms/results/area3，需含 sal.pkl ssh.pkl uo.pkl vo.pkl。
 # 对 seq_len ∈ {16,24,32,48} 循环，label_len = pred_len = seq_len/2。
 # SCALE_SETS: 每组为传给 run.py --scales 的若干整数（空格分隔）。
 #
@@ -8,7 +8,7 @@
 #   bash scripts/run_multiscale.sh
 
 DATA=ALL4
-SEQ_LENS=(16)
+SEQ_LENS=(16 24 32 48)
 SCALE_SETS=("2 1")
 
 MODEL=itransformerUniOcean4
