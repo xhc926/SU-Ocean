@@ -7,11 +7,11 @@
 # 用法:
 #   bash scripts/run_multiscale.sh
 
-DATA=ALL4
+DATA=ALL2
 SEQ_LENS=(16 24 32 48)
 SCALE_SETS=("2 1")
 
-MODEL=itransformerUniOcean4
+MODEL=emaformerUniOcean
 
 for SEQ_LEN in "${SEQ_LENS[@]}"; do
   HALF=$((SEQ_LEN / 2))
@@ -22,12 +22,13 @@ for SEQ_LEN in "${SEQ_LENS[@]}"; do
     echo ">>> Running multiscale: model=$MODEL, data=$DATA, seq_len=$SEQ_LEN, label_len=$LABEL_LEN, pred_len=$PRED_LEN, scales=$SCALES"
     echo "=========================================="
     python -u run.py \
-      --checkpoints /root/autodl-tmp/ms/checkpoints/area3 \
-      --log_dir /root/autodl-tmp/ms/logs/area3 \
-      --results_dir /root/autodl-tmp/ms/results/area3 \
+      --checkpoints /root/autodl-tmp/${MODEL}/ms/checkpoints/area2 \
+      --log_dir /root/autodl-tmp/${MODEL}/ms/logs/area2 \
+      --results_dir /root/autodl-tmp/${MODEL}/ms/results/area2 \
       --model $MODEL \
       --data $DATA \
-      --root_path /root/autodl-tmp/data/upsampled/1-12/area3 \
+      --root_path /root/autodl-tmp/data/upsampled/1-4/area2 \
+      --land_mask_path /root/autodl-tmp/data/upsampled/1-4/area2/land_mask.pkl \
       --features M \
       --attn prob \
       --freq w \
@@ -45,11 +46,10 @@ for SEQ_LEN in "${SEQ_LENS[@]}"; do
       --lradj type3 \
       --dropout 0.1 \
       --patience 5 \
-      --itr 5 \
+      --itr 6 \
       --use_multi_scale \
       --scales $SCALES 
       echo ""
   done
 done
-
 echo ">>> All multiscale runs completed."

@@ -58,7 +58,7 @@ run_one_region() {
         --lradj type3 \
         --dropout 0.1 \
         --patience 5 \
-        --itr 6
+        --itr 1
       echo ""
     done
   done
