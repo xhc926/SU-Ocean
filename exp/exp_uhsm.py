@@ -1,16 +1,12 @@
 from data.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred
 from exp.exp_basic import Exp_Basic
-from models.model_Informer import InformerUni, Informer,  Informer_two
-from models.model_Autoformer import AutoformerUni,Autoformer
-from models.model_FEDformer import FEDformerUni,FEDformer
 from models.model_base import ConvLSTM,GRU
-
-from models.model_iTransformer import iTransformer, iTransformerUni, iTransformerUni4
-from models.model_iTransformer_ablation import iTransformerUniAbl
+from models.model_iTransformer import iTransformer, iTransformerUHSM, iTransformerUHSM4
+from models.model_iTransformer_ablation import iTransformerUHSMAbl
 from models.model_OLinear import OLinear
 from models.model_SimpleTM import SimpleTM
 from models.model_Dualformer import Dualformer
-from models.model_EMAformer import EMAformer, EMAformerUni, EMAformerUni4
+from models.model_EMAformer import EMAformer, EMAformerUHSM, EMAformerUHSM4
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
 
@@ -28,9 +24,9 @@ import inspect
 import warnings
 warnings.filterwarnings('ignore')
 
-class Exp_UniOcean(Exp_Basic):
+class Exp_UHSM(Exp_Basic):
     def __init__(self, args):
-        super(Exp_UniOcean, self).__init__(args)
+        super(Exp_UHSM, self).__init__(args)
         self.land_mask = None
         if getattr(args, 'land_mask_path', '') and os.path.exists(args.land_mask_path):
             import pandas as pd
@@ -41,25 +37,18 @@ class Exp_UniOcean(Exp_Basic):
     def _build_model(self):
         model_name = self.args.model
         model_dict = {
-            'informerUniOcean':InformerUni,
-            'informer':Informer,
-            'informer_two':Informer_two,
-            'autoformerUniOcean':AutoformerUni,
-            'autoformer':Autoformer,
-            'fedformerUniOcean':FEDformerUni,
-            'fedformer':FEDformer,
             'convlstm':ConvLSTM,
             'gru':GRU,
             'itransformer':iTransformer,
-            'itransformerUniOcean':iTransformerUni,
-            'itransformerUniOcean4':iTransformerUni4,
-            'itransformerUniAbl':iTransformerUniAbl,
+            'itransformerUHSM':iTransformerUHSM,
+            'itransformerUHSM4':iTransformerUHSM4,
+            'itransformerUHSMAbl':iTransformerUHSMAbl,
             'olinear': OLinear,
             'simpletm':SimpleTM,
             'dualformer':Dualformer,
             'emaformer':EMAformer,
-            'emaformerUniOcean':EMAformerUni,
-            'emaformerUniOcean4':EMAformerUni4,
+            'emaformerUHSM':EMAformerUHSM,
+            'emaformerUHSM4':EMAformerUHSM4,
         }
 
         def _model_extra_init_kwargs(model_cls):
@@ -82,13 +71,10 @@ class Exp_UniOcean(Exp_Basic):
             model = model_dict[model_name](
                 self.args.enc_in, self.args.d_model, self.args.num_layers,
             )
-        elif model_name in ['informer', 'informerUniOcean', 'informer_two',
-                            'autoformerUniOcean', 'fedformerUniOcean',
-                            'autoformer', 'fedformer',
-                            'itransformer', 'itransformerUniOcean', 'itransformerUniAbl',
-                            'itransformerUniOcean4', 'itransformerUniOcean5',
+        elif model_name in ['itransformer', 'itransformerUHSM',
+                            'itransformerUHSM4', 'itransformerUHSMAbl',
                             'olinear', 'simpletm', 'dualformer',
-                            'emaformer', 'emaformerUniOcean', 'emaformerUniOcean4']:
+                            'emaformer', 'emaformerUHSM', 'emaformerUHSM4']:
             model_kwargs = {}
             if model_name == 'simpletm':
                 model_kwargs.update({
@@ -534,4 +520,3 @@ class Exp_UniOcean(Exp_Basic):
             batch_y = batch_y[:,-self.args.pred_len:,f_dim:].to(self.device)
 
         return outputs, batch_y
-    

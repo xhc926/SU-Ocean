@@ -137,7 +137,7 @@ class iTransformer(nn.Module):
             return dec_out[:, -self.pred_len:, :]
 
 
-class iTransformerUni(nn.Module):
+class iTransformerUHSM(nn.Module):
     """
     iTransformer for multi-factor prediction (hardcoded 3 factors).
     Coarse-to-Fine hierarchical residual across spatial scales.
@@ -152,7 +152,7 @@ class iTransformerUni(nn.Module):
                 device=torch.device('cuda:0'),
                 land_mask_path='',
                 scale_mask_mode='soft'):
-        super(iTransformerUni, self).__init__()
+        super(iTransformerUHSM, self).__init__()
         self.pred_len = out_len
         self.attn = attn
         self.output_attention = output_attention
@@ -264,7 +264,7 @@ class iTransformerUni(nn.Module):
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
         
         if x_enc.shape[-1] < 3:
-            raise ValueError("iTransformerUni expects 3 factors in x_enc, got {}".format(x_enc.shape[-1]))
+            raise ValueError("iTransformerUHSM expects 3 factors in x_enc, got {}".format(x_enc.shape[-1]))
 
         x_factor = [
             self.space_embedding(x_enc[:,:,:,0]),
@@ -367,7 +367,7 @@ class iTransformerUni(nn.Module):
             return dec_out[:, -self.pred_len:, :, :]
 
 
-class iTransformerUni4(nn.Module):
+class iTransformerUHSM4(nn.Module):
     """
     iTransformer for multi-factor prediction (hardcoded 4 factors).
     Coarse-to-Fine hierarchical residual across spatial scales.
@@ -382,7 +382,7 @@ class iTransformerUni4(nn.Module):
                 device=torch.device('cuda:0'),
                 land_mask_path='',
                 scale_mask_mode='soft'):
-        super(iTransformerUni4, self).__init__()
+        super(iTransformerUHSM4, self).__init__()
         self.pred_len = out_len
         self.attn = attn
         self.output_attention = output_attention
@@ -458,7 +458,7 @@ class iTransformerUni4(nn.Module):
             [nn.Linear(d_model, out_len, bias=True) for _ in range(self.factor_num)]
         )
 
-        # Cross-factor MLP heads (keep explicit naming style with iTransformerUni).
+        # Cross-factor MLP heads.
         self.mlp_one = nn.Linear(self.factor_num * d_model, d_model, bias=True)
         self.mlp_two = nn.Linear(self.factor_num * d_model, d_model, bias=True)
         self.mlp_three = nn.Linear(self.factor_num * d_model, d_model, bias=True)
@@ -502,7 +502,7 @@ class iTransformerUni4(nn.Module):
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
 
         if x_enc.shape[-1] < self.factor_num:
-            raise ValueError("iTransformerUni4 expects 4 factors in x_enc, got {}".format(x_enc.shape[-1]))
+            raise ValueError("iTransformerUHSM4 expects 4 factors in x_enc, got {}".format(x_enc.shape[-1]))
 
         x_factor = [self.space_embedding(x_enc[:, :, :, i]) for i in range(self.factor_num)]
 
@@ -590,3 +590,4 @@ class iTransformerUni4(nn.Module):
             return dec_out[:, -self.pred_len:, :, :], attns_one
         else:
             return dec_out[:, -self.pred_len:, :, :]
+

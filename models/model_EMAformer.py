@@ -161,7 +161,7 @@ class EMAformer(nn.Module):
         else:
             return dec_out[:, -self.pred_len:, :]
 
-class _EMAformerUniBase(nn.Module):
+class _EMAformerUHSMBase(nn.Module):
     def __init__(self, factor_num, enc_in, dec_in, c_out, seq_len, label_len, out_len,
                  factor=5, d_model=512, n_heads=8, e_layers=3, d_layers=2, d_ff=512, move_avg=25,
                  dropout=0.0, attn='prob', embed='fixed', freq='h', activation='gelu',
@@ -171,7 +171,7 @@ class _EMAformerUniBase(nn.Module):
                  conv_dff=32, device=torch.device('cuda:0'),
                  land_mask_path='', scale_mask_mode='soft',
                  cycle=24, output_proj_dropout=0.1, use_norm=True):
-        super(_EMAformerUniBase, self).__init__()
+        super(_EMAformerUHSMBase, self).__init__()
         self.factor_num = factor_num
         self.pred_len = out_len
         self.output_attention = output_attention
@@ -355,7 +355,7 @@ class _EMAformerUniBase(nn.Module):
                 cycle_index=None, enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
         if x_enc.shape[-1] < self.factor_num:
             raise ValueError(
-                "EMAformerUni expects {} factors in x_enc, got {}".format(
+                "EMAformerUHSM expects {} factors in x_enc, got {}".format(
                     self.factor_num, x_enc.shape[-1]
                 )
             )
@@ -449,21 +449,21 @@ class _EMAformerUniBase(nn.Module):
         return dec_out[:, -self.pred_len:, :, :]
 
 
-class EMAformerUni(_EMAformerUniBase):
+class EMAformerUHSM(_EMAformerUHSMBase):
     """
     EMAformer for multi-factor prediction (hardcoded 3 factors).
     Coarse-to-Fine hierarchical residual across spatial scales + cross-factor fusion.
     """
 
     def __init__(self, *args, **kwargs):
-        super(EMAformerUni, self).__init__(3, *args, **kwargs)
+        super(EMAformerUHSM, self).__init__(3, *args, **kwargs)
 
 
-class EMAformerUni4(_EMAformerUniBase):
+class EMAformerUHSM4(_EMAformerUHSMBase):
     """
     EMAformer for multi-factor prediction (hardcoded 4 factors).
     Coarse-to-Fine hierarchical residual across spatial scales + cross-factor fusion.
     """
 
     def __init__(self, *args, **kwargs):
-        super(EMAformerUni4, self).__init__(4, *args, **kwargs)
+        super(EMAformerUHSM4, self).__init__(4, *args, **kwargs)

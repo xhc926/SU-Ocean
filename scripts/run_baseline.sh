@@ -1,20 +1,19 @@
 #!/bin/bash
-# Baseline：单要素 EMAformer，依次跑 area2 与 area3（一次性跑完）
-#   area2：swh_1_4, u10_1_4, v10_1_4（1-4 / area2，1075 点）
-#   area3：sal_1_12, ssh_1_12, uo_1_12, vo_1_12（1-12 / area3，637 点）
-# seq_len 默认多组，label_len = pred_len = seq_len/2
+# Baseline：single factor EMAformer， area2 & area3 in one run
+#   area2：swh_1_4, u10_1_4, v10_1_4（1-4 / area2，1075）
+#   area3：sal_1_12, ssh_1_12, uo_1_12, vo_1_12（1-12 / area3，637）
+# seq_len ∈ {16,24,32,48}，label_len = pred_len = seq_len/2
 #
-# 用法（需在仓库根目录）:
-#   bash scripts/run_baseline.sh              # 先 area2 全部变量，再 area3 全部变量
-#   bash scripts/run_baseline.sh area2        # 仅 area2
-#   bash scripts/run_baseline.sh area3        # 仅 area3
-#   bash scripts/run_baseline.sh area2 swh_1_4  # 仅 area2 下单个 data（可选）
+# cd uhsm
+#   bash scripts/run_baseline.sh              # area2 & area3 all
+#   bash scripts/run_baseline.sh area2        # area2
+#   bash scripts/run_baseline.sh area3        # area3
+#   bash scripts/run_baseline.sh area2 swh_1_4  # area2 one data
 #
-# enc_in/dec_in/c_out 由 run.py 的 data_parser 按 --data 与 --features 自动设置。
-# ckpt / log / results：/root/autodl-tmp/${MODEL}/area{2,3}/... 随 MODEL 变化，不写死模型名。
+# ckpt / log / results：/root/autodl-tmp/${MODEL}/area{2,3}/... change with MODEL.
 
-SEQ_LENS=(16 24 32 48)
-MODEL=emaformer
+SEQ_LENS=(16 24 32) # for seq_len=48, let d_model=64
+MODEL=emaformer # or itransformer
 OUT_ROOT=/root/autodl-tmp
 
 run_one_region() {
@@ -58,7 +57,7 @@ run_one_region() {
         --lradj type3 \
         --dropout 0.1 \
         --patience 5 \
-        --itr 1
+        --itr 2
       echo ""
     done
   done

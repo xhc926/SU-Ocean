@@ -1,17 +1,18 @@
 #!/bin/bash
-# Multiscale: ALL4 四要素（sal / ssh / uo / vo）+ iTransformerUniOcean4。
-# 数据目录：/root/autodl-tmp/ms/results/area3，需含 sal.pkl ssh.pkl uo.pkl vo.pkl。
-# 对 seq_len ∈ {16,24,32,48} 循环，label_len = pred_len = seq_len/2。
-# SCALE_SETS: 每组为传给 run.py --scales 的若干整数（空格分隔）。
+# Multiscale: ALL2（swh / u10 / v10）+ iTransformerUHSM, ALL4（sal / ssh / uo / vo）+ iTransformerUHSM4。
+# or EMAformerUHSM/EMAformerUHSM4
+# data：/root/autodl-tmp/ms/results/area3
+# seq_len ∈ {16,24,32,48}，label_len = pred_len = seq_len/2。
+# SCALE_SETS:  run.py --scales several integers。
 #
-# 用法:
-#   bash scripts/run_multiscale.sh
+# 
+# bash scripts/run_multiscale.sh
 
 DATA=ALL2
-SEQ_LENS=(16 24 32 48)
-SCALE_SETS=("2 1")
+SEQ_LENS=(16 24 32) # for seq_len=48, let d_model=64
+SCALE_SETS=("2 1" "4 2 1" "3 1")
 
-MODEL=emaformerUniOcean
+MODEL=emaformerUHSM
 
 for SEQ_LEN in "${SEQ_LENS[@]}"; do
   HALF=$((SEQ_LEN / 2))
@@ -25,10 +26,11 @@ for SEQ_LEN in "${SEQ_LENS[@]}"; do
       --checkpoints /root/autodl-tmp/${MODEL}/ms/checkpoints/area2 \
       --log_dir /root/autodl-tmp/${MODEL}/ms/logs/area2 \
       --results_dir /root/autodl-tmp/${MODEL}/ms/results/area2 \
+      --land_mask_path /root/autodl-tmp/data/upsampled/1-4/area2/land_mask.pkl \
+      # or area3
       --model $MODEL \
       --data $DATA \
       --root_path /root/autodl-tmp/data/upsampled/1-4/area2 \
-      --land_mask_path /root/autodl-tmp/data/upsampled/1-4/area2/land_mask.pkl \
       --features M \
       --attn prob \
       --freq w \
@@ -46,9 +48,9 @@ for SEQ_LEN in "${SEQ_LENS[@]}"; do
       --lradj type3 \
       --dropout 0.1 \
       --patience 5 \
-      --itr 6 \
+      --itr 5 \
       --use_multi_scale \
-      --scales $SCALES 
+      --scales $SCALES
       echo ""
   done
 done

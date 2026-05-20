@@ -1,11 +1,8 @@
 #!/bin/bash
-# SimpleTM 单要素 baseline（area3：sal / ssh / uo / vo）
-# 需在仓库根目录 uniocean/ 下执行:
-#   bash scripts/run_simpletm.sh
-#   bash scripts/run_simpletm.sh sal_1_12    # 只跑一个 --data
+# SimpleTM baseline
 #
-# 可通过环境变量覆盖路径或超参，例如:
-#   SEQ_LENS="32 48" D_MODEL=128 bash scripts/run_simpletm.sh
+#   bash scripts/run_simpletm.sh
+#   bash scripts/run_simpletm.sh sal_1_12    # only one --data
 
 set -euo pipefail
 
@@ -24,7 +21,7 @@ if [ -n "${1:-}" ]; then
   VARS=("$1")
 fi
 
-MODEL="SimpleTM"
+MODEL="simpletm"
 
 for SEQ_LEN in "${SEQ_LENS[@]}"; do
   HALF=$((SEQ_LEN / 2))

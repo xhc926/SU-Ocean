@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from models.model_iTransformer import iTransformerUni4, iTransformerUni
+from models.model_iTransformer import iTransformerUHSM4
 
 
 class _SelfFactorSelector(nn.Module):
@@ -25,7 +25,7 @@ class _SelfFactorSelector(nn.Module):
         return x[..., start:end]
 
 
-class iTransformerUniAbl(iTransformerUni4):
+class iTransformerUHSMAbl(iTransformerUHSM4):
     """
     Ablation model:
     - Keep 4-factor inputs and per-factor encoders unchanged.
@@ -41,7 +41,7 @@ class iTransformerUniAbl(iTransformerUni4):
                  device=torch.device('cuda:0'),
                  land_mask_path='',
                  scale_mask_mode='soft'):
-        super(iTransformerUniAbl, self).__init__(
+        super(iTransformerUHSMAbl, self).__init__(
             enc_in, dec_in, c_out, seq_len, label_len, out_len,
             factor=factor, d_model=d_model, n_heads=n_heads, e_layers=e_layers, d_layers=d_layers, d_ff=d_ff, move_avg=move_avg,
             dropout=dropout, attn=attn, embed=embed, freq=freq, activation=activation,
@@ -53,10 +53,8 @@ class iTransformerUniAbl(iTransformerUni4):
             land_mask_path=land_mask_path,
             scale_mask_mode=scale_mask_mode,
         )
-
         # Replace cross-factor MLPs with identity-like selectors on each factor slice.
         self.mlp_one = _SelfFactorSelector(0, self.d_model)
         self.mlp_two = _SelfFactorSelector(1, self.d_model)
         self.mlp_three = _SelfFactorSelector(2, self.d_model)
-        # For 3-factor ablation, we don't need the fourth MLP.
         self.mlp_four = _SelfFactorSelector(3, self.d_model)

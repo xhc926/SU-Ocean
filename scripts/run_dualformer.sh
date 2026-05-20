@@ -1,10 +1,8 @@
 #!/bin/bash
-# Dualformer 训练脚本（area2 单要素，与 run_baseline.sh 风格一致）
-# 用法（需在仓库根目录 uniocean/）:
+# Dualformer 
+# 
 #   bash scripts/run_dualformer.sh
 #   bash scripts/run_dualformer.sh swh_1_4
-#
-# enc_in/dec_in/c_out 由 run.py 的 data_parser 按 --data 与 --features 自动设置。
 
 VARS=(sal_1_12 ssh_1_12 uo_1_12 vo_1_12)
 SEQ_LENS=(16 24 32 48)
@@ -45,7 +43,7 @@ for SEQ_LEN in "${SEQ_LENS[@]}"; do
       --lradj type3 \
       --dropout 0.1 \
       --patience 5 \
-      --itr 7
+      --itr 3
     echo ""
   done
 done

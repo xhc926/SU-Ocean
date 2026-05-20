@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from datetime import datetime
 
-from exp.exp_uniocean import Exp_UniOcean
+from exp.exp_uhsm import Exp_UHSM
 
 class Tee:
     def __init__(self, *files):
@@ -19,9 +19,9 @@ class Tee:
         for f in self.files:
             f.flush()
 
-parser = argparse.ArgumentParser(description='[UniOcean]')
+parser = argparse.ArgumentParser(description='[UHSM]')
 
-parser.add_argument('--model', type=str, required=True, default='informer')
+parser.add_argument('--model', type=str, required=True, default='emaformerUHSM')
 parser.add_argument('--data', type=str, required=True, default='ALL2')
 parser.add_argument('--root_path', type=str, default='/root/autodl-tmp/')
 parser.add_argument('--data_path', type=str, default='ALL2.pkl')    
@@ -198,7 +198,7 @@ args.s_layers = [int(s_l) for s_l in args.s_layers.replace(' ','').split(',')]
 args.detail_freq = args.freq
 args.freq = args.freq[-1:]
 
-Exp = Exp_UniOcean
+Exp = Exp_UHSM
 
 try:
     for ii in range(args.itr):

@@ -62,11 +62,11 @@ class Dataset_Custom(Dataset):
                 base = '/root/autodl-tmp/data/upsampled/1-4/area2'
                 pathlist = [[base, 'swh.pkl'], [base, 'u10.pkl'], [base, 'v10.pkl']]
             elif self.data_path == 'ALL3.pkl':
-                # Three factors for iTransformerUni: sal, ssh, sst (channel order 0,1,2).
+                # Three factors for iTransformerUHSM: sal, ssh, sst (channel order 0,1,2).
                 base = self.root_path.rstrip(os.sep)
                 pathlist = [[base, 'sal.pkl'], [base, 'ssh.pkl'], [base, 'sst.pkl']]
             elif self.data_path == 'ALL4.pkl':
-                # Four factors for iTransformerUni4: sal, ssh, uo, vo (channel order 0..3).
+                # Four factors for iTransformerUHSM4: sal, ssh, uo, vo (channel order 0..3).
                 base = self.root_path.rstrip(os.sep)
                 pathlist = [[base, 'sal.pkl'], [base, 'ssh.pkl'], [base, 'uo.pkl'], [base, 'vo.pkl']]
             else:

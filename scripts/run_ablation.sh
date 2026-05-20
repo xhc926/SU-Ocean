@@ -1,6 +1,5 @@
 #!/bin/bash
-# Cross-factor 融合消融：保留 3 要素输入，禁用 cross-factor 融合（itransformerUniAbl）。
-# 与 run_multiscale.sh 同风格：固定 ALL4（area3）、多尺度、同一组超参。
+# Cross-factor ablation：keep 3-factor input，ban cross-factor fusion（itransformerUniAbl）。
 #
 
 DATA=ALL4
