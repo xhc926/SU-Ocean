@@ -185,6 +185,16 @@ data_parser = {
     'uo_1_12':{'data':'uo.pkl','T':'target','M':[637,637,637],'S':[1,1,1],'MS':[637,637,637], 'root':'/root/autodl-tmp/data/upsampled/1-12/area3'},
     'vo_1_12':{'data':'vo.pkl','T':'target','M':[637,637,637],'S':[1,1,1],'MS':[637,637,637], 'root':'/root/autodl-tmp/data/upsampled/1-12/area3'},
     'ssh_1_12':{'data':'ssh.pkl','T':'target','M':[637,637,637],'S':[1,1,1],'MS':[637,637,637], 'root':'/root/autodl-tmp/data/upsampled/1-12/area3'},
+    'ALL5':{'data':'ALL5.pkl','T':'target','M':[340,340,340],'S':[1,1,1],'MS':[340,340,1], 'root':'/root/autodl-tmp/data/bohai'},
+    # Individual bohai single-factor entries
+    'u10':{'data':'u10.pkl','T':'target','M':[340,340,340],'S':[1,1,1],'MS':[340,340,1], 'root':'/root/autodl-tmp/data/bohai'},
+    'v10':{'data':'v10.pkl','T':'target','M':[340,340,340],'S':[1,1,1],'MS':[340,340,1], 'root':'/root/autodl-tmp/data/bohai'},
+    'uo':{'data':'uo.pkl','T':'target','M':[340,340,340],'S':[1,1,1],'MS':[340,340,1], 'root':'/root/autodl-tmp/data/bohai'},
+    'vo':{'data':'vo.pkl','T':'target','M':[340,340,340],'S':[1,1,1],'MS':[340,340,1], 'root':'/root/autodl-tmp/data/bohai'},
+    'VHM0':{'data':'VHM0.pkl','T':'target','M':[340,340,340],'S':[1,1,1],'MS':[340,340,1], 'root':'/root/autodl-tmp/data/bohai'},
+    'VMDR_cos':{'data':'VMDR_cos.pkl','T':'target','M':[340,340,340],'S':[1,1,1],'MS':[340,340,1], 'root':'/root/autodl-tmp/data/bohai'},
+    'VMDR_sin':{'data':'VMDR_sin.pkl','T':'target','M':[340,340,340],'S':[1,1,1],'MS':[340,340,1], 'root':'/root/autodl-tmp/data/bohai'},
+    'VTM02':{'data':'VTM02.pkl','T':'target','M':[340,340,340],'S':[1,1,1],'MS':[340,340,1], 'root':'/root/autodl-tmp/data/bohai'},
 }
 if args.data in data_parser.keys():
     data_info = data_parser[args.data]

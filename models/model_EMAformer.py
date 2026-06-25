@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from models.embed import SpaceEmbedding
 from layers.Transformer_EncDec import Encoder, EncoderLayer
 from layers.SelfAttention_Family import FullAttention, AttentionLayer
 from layers.Embed import DataEmbedding_inverted
@@ -41,6 +42,8 @@ def _infer_spatial_shape(enc_in):
         return (17, 9)
     if enc_in == 49 * 13:
         return (49, 13)
+    if enc_in == 17 * 20:
+        return (17, 20)
     return None
 
 
@@ -78,6 +81,7 @@ class EMAformer(nn.Module):
         self.land_mask_path = land_mask_path
         self.scale_mask_mode = scale_mask_mode
 
+        self.space_embedding = SpaceEmbedding(seq_len, d_model, land_mask_path=land_mask_path)
         self.enc_embedding = DataEmbedding_inverted(seq_len, d_model, embed, freq, dropout)
 
         self.encoder = Encoder(
@@ -128,6 +132,8 @@ class EMAformer(nn.Module):
         return torch.remainder(cycle_index, self.cycle_len)
 
     def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec, cycle_index=None):
+        x_enc = self.space_embedding(x_enc)
+
         if self.use_norm:
             means = x_enc.mean(1, keepdim=True).detach()
             x_enc = x_enc - means
@@ -143,6 +149,9 @@ class EMAformer(nn.Module):
         phase_emb = self.phase_embedding(phase.view(-1, 1).expand(B, N))
         joint_emb = self.joint_embedding(phase).reshape(B, self.enc_in, self.d_model)
         enc_out = enc_out[:, :N, :] + channel_emb + phase_emb + joint_emb
+        if self.space_embedding.land_mask_1d is not None and self.space_embedding.land_mask_1d.numel() == N:
+            mask_1d = self.space_embedding.land_mask_1d.to(enc_out.device).view(1, N, 1)
+            enc_out = enc_out * mask_1d
         enc_origin = enc_out
 
         enc_out, attns = self.encoder(enc_out, attn_mask=None)
@@ -186,6 +195,7 @@ class _EMAformerUHSMBase(nn.Module):
         self.cycle_len = int(cycle)
         self.land_mask_flat = None
         self.scale_mask_mode = str(scale_mask_mode).lower()
+        self.space_embedding = SpaceEmbedding(seq_len, d_model, land_mask_path=land_mask_path)
         if self.scale_mask_mode not in ['soft', 'hard', 'off']:
             raise ValueError(
                 "scale_mask_mode must be one of ['soft', 'hard', 'off'], got {}".format(
@@ -361,7 +371,7 @@ class _EMAformerUHSMBase(nn.Module):
             )
 
         phase = self._resolve_phase(x_enc[:, :, :, 0], cycle_index)
-        x_factor = [x_enc[:, :, :, i] for i in range(self.factor_num)]
+        x_factor = [self.space_embedding(x_enc[:, :, :, i]) for i in range(self.factor_num)]
 
         hidden_prev = [None for _ in range(self.factor_num)]
         prev_scale = None
@@ -391,6 +401,8 @@ class _EMAformerUHSMBase(nn.Module):
 
                 enc_embed = self.enc_embeddings[i](x_scale_enc, x_mark_enc)
                 enc_embed = self._add_ema_embeddings(enc_embed, i, n_spatial_tokens, phase, key)
+                if mask_flat_s is not None and mask_flat_s.numel() == n_spatial_tokens:
+                    enc_embed[:, :n_spatial_tokens, :] = enc_embed[:, :n_spatial_tokens, :] * mask_flat_s.view(1, -1, 1)
 
                 if hidden_prev[i] is None:
                     x_dec_i = enc_embed
@@ -467,3 +479,13 @@ class EMAformerUHSM4(_EMAformerUHSMBase):
 
     def __init__(self, *args, **kwargs):
         super(EMAformerUHSM4, self).__init__(4, *args, **kwargs)
+
+
+class EMAformerUHSM8(_EMAformerUHSMBase):
+    """
+    EMAformer for multi-factor prediction (hardcoded 8 factors).
+    Coarse-to-Fine hierarchical residual across spatial scales + cross-factor fusion.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(EMAformerUHSM8, self).__init__(8, *args, **kwargs)

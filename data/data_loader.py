@@ -15,6 +15,35 @@ def _read_table(path):
     return pd.read_pickle(path)
 
 
+def _detect_time_col(df):
+    """Return the time column name present in the DataFrame, preferring 'date' over 'time'.
+    
+    Also handles the case where time information is stored as the DataFrame index
+    (e.g. DatetimeIndex) rather than as a named column.
+    
+    Returns:
+        str  -- name of the time column in df.columns (always 'date' after normalization)
+        None -- time is in the index (caller should reset_index)
+    """
+    cols = list(df.columns)
+    for candidate in ['date', 'time', 'datetime', 'Date', 'Time']:
+        if candidate in cols:
+            return candidate
+
+    # Check if time is stored as the index
+    idx_name = df.index.name or ''
+    if idx_name.lower() in ['date', 'time', 'datetime']:
+        return None  # signal: time is in the index with a recognized name
+
+    if isinstance(df.index, pd.DatetimeIndex):
+        return None  # signal: time is in the index (DatetimeIndex)
+
+    raise KeyError(
+        "DataFrame must have a 'date'/'time' column or a DatetimeIndex, "
+        "got columns={} index_name={}".format(cols, idx_name)
+    )
+
+
 class Dataset_Custom(Dataset):
     def __init__(self, root_path, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',
@@ -46,7 +75,8 @@ class Dataset_Custom(Dataset):
     def __read_data__(self):
         _is_multi_factor = (self.root_path in ['./data/ALL/', '/root/autodl-tmp/data/upsampled/1-4/area1',
                                                  '/root/autodl-tmp/data/upsampled/1-4/area2',
-                                                 '/root/autodl-tmp/data/upsampled/1-12/area3']) and \
+                                                 '/root/autodl-tmp/data/upsampled/1-12/area3',
+                                                 '/root/autodl-tmp/data/bohai']) and \
             self.data_path in ['ALL1.pkl', 'ALL2.pkl', 'ALL3.pkl', 'ALL4.pkl', 'ALL5.pkl', 'ALL6.pkl']
 
         if _is_multi_factor:
@@ -69,6 +99,10 @@ class Dataset_Custom(Dataset):
                 # Four factors for iTransformerUHSM4: sal, ssh, uo, vo (channel order 0..3).
                 base = self.root_path.rstrip(os.sep)
                 pathlist = [[base, 'sal.pkl'], [base, 'ssh.pkl'], [base, 'uo.pkl'], [base, 'vo.pkl']]
+            elif self.data_path == 'ALL5.pkl':
+                base = '/root/autodl-tmp/data/bohai'
+                pathlist = [[base, 'u10.pkl'], [base, 'v10.pkl'], [base, 'uo.pkl'], [base, 'vo.pkl'], 
+                            [base, 'VHM0.pkl'], [base, 'VMDR_cos.pkl'], [base, 'VMDR_sin.pkl'], [base, 'VTM02.pkl']]
             else:
                 pathlist = [['./data/OISST/', 'OISST5.pkl'], ['./data/OISSS/', 'OISSS3.pkl']]
 
@@ -83,6 +117,16 @@ class Dataset_Custom(Dataset):
             for filepath, df_raw in raw_tables:
                 if len(df_raw) > min_rows:
                     df_raw = df_raw.iloc[:min_rows].copy()
+
+                # Normalize time column: rename 'time' → 'date' for internal consistency
+                time_col = _detect_time_col(df_raw)
+                if time_col is None:
+                    # Time is in the index — promote to a 'date' column
+                    df_raw = df_raw.reset_index()
+                    if df_raw.columns[0] != 'date':
+                        df_raw = df_raw.rename(columns={df_raw.columns[0]: 'date'})
+                elif time_col != 'date':
+                    df_raw = df_raw.rename(columns={time_col: 'date'})
 
                 if self.features == 'M':
                     if self.cols:
@@ -158,6 +202,16 @@ class Dataset_Custom(Dataset):
         else:
             filepath = os.path.join(self.root_path, self.data_path)
             df_raw = _read_table(filepath)
+
+            # Normalize time column: rename 'time' → 'date' for internal consistency
+            time_col = _detect_time_col(df_raw)
+            if time_col is None:
+                # Time is in the index — promote to a 'date' column
+                df_raw = df_raw.reset_index()
+                if df_raw.columns[0] != 'date':
+                    df_raw = df_raw.rename(columns={df_raw.columns[0]: 'date'})
+            elif time_col != 'date':
+                df_raw = df_raw.rename(columns={time_col: 'date'})
 
             if self.features == 'M':
                 if self.cols:

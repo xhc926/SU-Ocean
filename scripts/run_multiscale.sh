@@ -27,7 +27,6 @@ for SEQ_LEN in "${SEQ_LENS[@]}"; do
       --log_dir /root/autodl-tmp/${MODEL}/ms/logs/area2 \
       --results_dir /root/autodl-tmp/${MODEL}/ms/results/area2 \
       --land_mask_path /root/autodl-tmp/data/upsampled/1-4/area2/land_mask.pkl \
-      # or area3
       --model $MODEL \
       --data $DATA \
       --root_path /root/autodl-tmp/data/upsampled/1-4/area2 \

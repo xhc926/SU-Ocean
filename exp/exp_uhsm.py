@@ -6,7 +6,7 @@ from models.model_iTransformer_ablation import iTransformerUHSMAbl
 from models.model_OLinear import OLinear
 from models.model_SimpleTM import SimpleTM
 from models.model_Dualformer import Dualformer
-from models.model_EMAformer import EMAformer, EMAformerUHSM, EMAformerUHSM4
+from models.model_EMAformer import EMAformer, EMAformerUHSM, EMAformerUHSM4, EMAformerUHSM8
 from utils.tools import EarlyStopping, adjust_learning_rate
 from utils.metrics import metric
 
@@ -49,6 +49,7 @@ class Exp_UHSM(Exp_Basic):
             'emaformer':EMAformer,
             'emaformerUHSM':EMAformerUHSM,
             'emaformerUHSM4':EMAformerUHSM4,
+            'emaformerUHSM8':EMAformerUHSM8
         }
 
         def _model_extra_init_kwargs(model_cls):
@@ -74,7 +75,7 @@ class Exp_UHSM(Exp_Basic):
         elif model_name in ['itransformer', 'itransformerUHSM',
                             'itransformerUHSM4', 'itransformerUHSMAbl',
                             'olinear', 'simpletm', 'dualformer',
-                            'emaformer', 'emaformerUHSM', 'emaformerUHSM4']:
+                            'emaformer', 'emaformerUHSM', 'emaformerUHSM4', 'emaformerUHSM8']:
             model_kwargs = {}
             if model_name == 'simpletm':
                 model_kwargs.update({
@@ -136,7 +137,8 @@ class Exp_UHSM(Exp_Basic):
                                                  '/root/autodl-tmp/data/upsampled/1-4/area2',
                                                  '/root/autodl-tmp/data/upsampled/1-12/area3',
                                                  '/root/autodl-tmp/data/upsampled/1-12/area3/short',
-                                                 '/root/autodl-tmp/ms/results/area3'] and \
+                                                 '/root/autodl-tmp/ms/results/area3',
+                                                 '/root/autodl-tmp/data/bohai'] and \
             self.args.data in ['ALL1', 'ALL2', 'ALL3', 'ALL4', 'ALL5', 'ALL6']
 
     def _mask_like(self, ref_tensor):
@@ -170,11 +172,14 @@ class Exp_UHSM(Exp_Basic):
             'OISST1': Dataset_Custom, 'OISST2': Dataset_Custom, 'OISST3': Dataset_Custom, 'OISST4': Dataset_Custom, 'OISST5': Dataset_Custom,
             'ALL1': Dataset_Custom, 'ALL2': Dataset_Custom,
             'ALL3': Dataset_Custom, 'ALL4': Dataset_Custom,
+            'ALL5': Dataset_Custom, 'ALL6': Dataset_Custom,
             'msl_1_4': Dataset_Custom, 'swh_1_4': Dataset_Custom,
             'u10_1_4': Dataset_Custom, 'v10_1_4': Dataset_Custom,
             'sal_1_12': Dataset_Custom, 'sst_1_12': Dataset_Custom,
             'uo_1_12': Dataset_Custom, 'vo_1_12': Dataset_Custom,
             'ssh_1_12': Dataset_Custom,
+            'u10': Dataset_Custom, 'v10': Dataset_Custom, 'uo': Dataset_Custom, 'vo': Dataset_Custom,
+            'VHM0': Dataset_Custom, 'VMDR_cos': Dataset_Custom, 'VMDR_sin': Dataset_Custom, 'VTM02': Dataset_Custom,
         }
         Data = data_dict[self.args.data]
         timeenc = 0 if args.embed!='timeF' else 1

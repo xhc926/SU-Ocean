@@ -78,6 +78,7 @@ class SpaceEmbedding(nn.Module):
         self.land_mask_2d_1075 = None
         self.land_mask_2d_153 = None
         self.land_mask_2d_637 = None
+        self.land_mask_2d_340 = None
         if land_mask_path and os.path.exists(land_mask_path):
             mask_df = pd.read_pickle(land_mask_path)
             mask_np = mask_df.values.astype(np.float32).reshape(-1)
@@ -90,6 +91,8 @@ class SpaceEmbedding(nn.Module):
                 self.land_mask_2d_153 = torch.from_numpy(mask_np.reshape(17, 9))
             elif mask_np.shape[0] == 637:
                 self.land_mask_2d_637 = torch.from_numpy(mask_np.reshape(49, 13))
+            elif mask_np.shape[0] == 340:
+                self.land_mask_2d_340 = torch.from_numpy(mask_np.reshape(17, 20))
 
         self.SpaceConv = nn.Conv2d(in_channels=c_in, out_channels=c_in, 
                                     kernel_size=3, padding=padding, padding_mode='zeros')
@@ -128,13 +131,19 @@ class SpaceEmbedding(nn.Module):
                 mask_2d = self.land_mask_2d_637.to(x.device)
             elif self.land_mask_1d is not None and self.land_mask_1d.numel() == D:
                 mask_2d = self.land_mask_1d.reshape(49, 13).to(x.device)
+        elif D == 340:
+            x = x.reshape(B, C, 17, 20)
+            if self.land_mask_2d_340 is not None:
+                mask_2d = self.land_mask_2d_340.to(x.device)
+            elif self.land_mask_1d is not None and self.land_mask_1d.numel() == D:
+                mask_2d = self.land_mask_1d.reshape(17, 20).to(x.device)
         elif D == 740:
             x = x.reshape(B, C, 20, 37)
         elif D == 204:
             x = x.reshape(B, C, 12, 17)
         else:
             raise ValueError(
-                "SpaceEmbedding: unsupported spatial dim {}, supported: 64800/9271/6411/1075/637/740/204".format(D)
+                "SpaceEmbedding: unsupported spatial dim {}, supported: 64800/9271/6411/1075/637/740/204/340".format(D)
             )
 
         if mask_2d is not None:
